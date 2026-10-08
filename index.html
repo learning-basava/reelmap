@@ -1,0 +1,1883 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Reelmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Kannada:wght@400;500;700&display=swap">
+<style>
+/* Layout: a creator's studio desk. Sticky top bar, a profile strip, then a two-column workspace (brief on the left, results on the right) that stacks under 940px. Storyboard frames are true 9:16 with app safe zones. */
+:root{
+  --bg:#F3F5F1; --surface:#FFFFFF; --sunken:#EAEEE8; --ink:#14201B; --muted:#58665F; --line:#D9E0D9;
+  --accent:#1E6A56; --accent-ink:#FFFFFF; --accent-soft:#DDEFE7; --pop:#D6F06B; --pop-ink:#1A240E; --rec:#E0604A;
+  --good:#23845A; --warn:#A86B12; --bad:#BD3F33;
+  --shadow:0 1px 2px rgba(20,32,27,.05),0 10px 30px -18px rgba(20,32,27,.35);
+  --f-display:"Bricolage Grotesque","Noto Sans Kannada",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree","Noto Sans Kannada",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono","Noto Sans Kannada",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r-s:8px; --r-m:12px; --r-l:18px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0D1311; --surface:#141C19; --sunken:#1A2420; --ink:#E5EDE8; --muted:#97A69F; --line:#28342F;
+  --accent:#6CC9AB; --accent-ink:#0A1210; --accent-soft:#183A2F; --pop:#C7E65B; --pop-ink:#142008; --rec:#F0866F;
+  --good:#5BC38B; --warn:#E1A94C; --bad:#EE7A6D;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0D1311; --surface:#141C19; --sunken:#1A2420; --ink:#E5EDE8; --muted:#97A69F; --line:#28342F;
+  --accent:#6CC9AB; --accent-ink:#0A1210; --accent-soft:#183A2F; --pop:#C7E65B; --pop-ink:#142008; --rec:#F0866F;
+  --good:#5BC38B; --warn:#E1A94C; --bad:#EE7A6D;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7); color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);margin:0;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:700;line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.35rem} h3{font-size:1.08rem} h4{font-size:.95rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1280px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:1.2rem;flex:none}
+.brand svg{width:26px;height:26px;color:var(--accent)}
+.tabs-wrap{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tabs-wrap::-webkit-scrollbar{display:none}
+.tabs{display:flex;gap:4px;width:max-content}
+.tab{border:0;background:none;padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tab:hover{color:var(--ink);background:var(--sunken)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tab .step{font-family:var(--f-mono);font-size:.72rem;border:1.5px solid currentColor;border-radius:50%;width:18px;height:18px;display:grid;place-items:center}
+.tab .count{font-family:var(--f-mono);font-size:.72rem;background:var(--pop);color:var(--pop-ink);border-radius:999px;padding:0 6px}
+.tools{display:flex;align-items:center;gap:8px;flex:none}
+@media (max-width:820px){.topbar-in{flex-wrap:wrap;gap:8px 12px;padding:10px 16px}.tools{margin-left:auto}.tabs-wrap{order:3;flex-basis:100%}}
+@media (max-width:420px){.engine{max-width:150px;overflow:hidden;text-overflow:ellipsis}}
+.engine{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.84rem;font-weight:600;white-space:nowrap}
+.engine .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.engine[data-engine="local"] .dot{background:var(--good);box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 25%,transparent)}
+.engine[data-engine="gemini"] .dot{background:#1a73e8;box-shadow:0 0 0 3px color-mix(in srgb,#1a73e8 25%,transparent)}
+.engine[data-engine="claude"] .dot{background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.engine[data-engine="offline"] .dot{background:var(--warn)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
+.seg button{border:0;background:none;border-radius:999px;padding:4px 10px;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+
+/* Profile strip */
+.profile-strip{max-width:1280px;margin:0 auto;padding:14px clamp(16px,3vw,20px) 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:.88rem}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;background:var(--surface);border:1px solid var(--line);font-size:.82rem;white-space:nowrap}
+.pill.pop{background:var(--pop);color:var(--pop-ink);border-color:transparent;font-weight:600}
+.pill.soft{background:var(--accent-soft);border-color:transparent}
+.welcome{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:8px 8px 8px 14px;font-size:.9rem;border-radius:var(--r-m);background:var(--pop);color:var(--pop-ink)}
+.welcome .ib{color:var(--pop-ink)}
+.welcome .ib:hover{background:color-mix(in srgb,var(--pop-ink) 12%,transparent)}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:600;cursor:pointer;padding:3px 4px;text-decoration:underline;text-underline-offset:3px}
+
+/* Workspace */
+main{max-width:1280px;margin:0 auto;padding-inline:clamp(16px,3vw,20px);padding-block:16px 64px}
+.view[hidden]{display:none}
+.work{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:940px){.work{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--shadow)}
+.brief{padding:20px;display:flex;flex-direction:column;gap:18px}
+.brief h2{font-size:1.2rem}
+.brief header{display:flex;flex-direction:column;gap:4px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field > label,.field > .label-row{font-weight:600;font-size:.9rem}
+.label-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+input[type=text],textarea,select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:var(--r-m);padding:10px 12px;outline:none;transition:border-color .15s}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:84px;line-height:1.5}
+.choices{display:grid;gap:8px}
+.choices.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.choice{border:1.5px solid var(--line);background:var(--bg);border-radius:var(--r-m);padding:10px 8px;text-align:center;align-items:center;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0}
+.choice b{font-size:.9rem}
+.choice span{font-size:.76rem;color:var(--muted);line-height:1.35}
+.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;cursor:pointer;font-size:.84rem;font-weight:600;white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.chip.static{cursor:default;font-weight:500}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r-m);padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bg);font-size:.86rem}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumb{position:relative;width:54px;aspect-ratio:9/16;border-radius:8px;overflow:hidden;border:1px solid var(--line);max-width:100%}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb button{position:absolute;top:2px;right:2px;border:0;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:20px;padding:0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:.9rem}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.big{padding:12px 18px;font-size:1rem;justify-content:center}
+.btn.sm{padding:5px 11px;font-size:.82rem}
+.btn.ghost{border-color:transparent;background:none}
+.btn.ghost:hover{background:var(--sunken)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:15px;height:15px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.kbd{font-family:var(--f-mono);font-size:.72rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;color:var(--muted)}
+
+/* Results */
+.results{display:flex;flex-direction:column;gap:16px;min-width:0}
+.res-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+.res-head .t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--sunken);color:var(--muted)}
+.badge.example{background:var(--pop);color:var(--pop-ink)}
+.status{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--r-m);background:var(--accent-soft);font-weight:600}
+.status .spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status .grow{flex:1}
+
+/* Idea cards */
+.ideas{display:flex;flex-direction:column;gap:12px}
+.idea{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px 14px;padding:16px 18px;border-radius:var(--r-l);background:var(--surface);border:1px solid var(--line);transition:border-color .15s}
+.idea.is-selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.idea .rank{font-family:var(--f-display);font-weight:700;font-size:1.5rem;color:var(--muted);line-height:1}
+.idea:first-child .rank{color:var(--accent)}
+.idea-main{display:flex;flex-direction:column;gap:7px;min-width:0}
+.hook{font-family:var(--f-display);font-weight:500;font-size:1.04rem;border-left:3px solid var(--pop);padding-left:10px}
+.why{font-size:.85rem;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:6px}
+.scorebox{display:flex;flex-direction:column;gap:8px}
+.total{display:flex;align-items:baseline;gap:6px}
+.total b{font-family:var(--f-display);font-size:1.7rem;line-height:1}
+.bars{display:grid;grid-template-columns:auto minmax(0,1fr) 26px;gap:3px 8px;align-items:center;font-size:.72rem;margin:0}
+.bars dt{color:var(--muted)}
+.bars dd{margin:0;height:6px;border-radius:9px;background:var(--sunken);overflow:hidden}
+.bars dd i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.bars .v{font-family:var(--f-mono);text-align:right;color:var(--muted)}
+.idea .actions{grid-column:2 / -1}
+@media (max-width:640px){.idea{grid-template-columns:24px minmax(0,1fr) auto;padding:14px}.idea-foot,details.why{grid-column:1 / -1}}
+
+/* Storyboard */
+.board{padding:20px;display:flex;flex-direction:column;gap:18px;scroll-margin-top:90px}
+.board-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+.board-head > div:first-child{min-width:0;display:flex;flex-direction:column;gap:6px}
+.board-head .actions{gap:2px}
+.frames-wrap{overflow-x:auto;padding-bottom:6px}
+.frames{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(170px,1fr);gap:12px;min-width:min-content}
+.frame{display:flex;flex-direction:column;gap:8px;min-width:0;width:100%}
+.canvas{position:relative;aspect-ratio:9/16;max-width:100%;border-radius:14px;overflow:hidden;background:
+  repeating-linear-gradient(135deg,var(--sunken) 0 10px,color-mix(in srgb,var(--sunken) 60%,var(--surface)) 10px 20px);border:1px solid var(--line);background-size:cover;background-position:center}
+.canvas.has-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 30%,transparent 55%,rgba(0,0,0,.55))}
+.canvas .tc{position:absolute;top:8px;left:8px;z-index:2;font-family:var(--f-mono);font-size:.68rem;background:rgba(10,14,12,.72);color:#F2F5F3;padding:2px 7px;border-radius:6px}
+.canvas .rec{position:absolute;top:10px;right:10px;z-index:2;width:8px;height:8px;border-radius:50%;background:var(--rec)}
+.canvas .ost{position:absolute;left:10px;right:22%;top:38%;z-index:2;font-family:var(--f-display);font-weight:700;font-size:.92rem;line-height:1.2;color:#fff;background:rgba(10,14,12,.62);padding:6px 8px;border-radius:8px;text-wrap:balance}
+.canvas:not(.has-img) .ost{background:var(--ink);color:var(--bg)}
+.safe{position:absolute;z-index:3;pointer-events:none;border:1.5px dashed color-mix(in srgb,var(--rec) 85%,transparent);background:color-mix(in srgb,var(--rec) 12%,transparent)}
+.safe.b{left:0;right:0;bottom:0;height:20%;border-left:0;border-right:0;border-bottom:0}
+.safe.r{right:0;top:38%;bottom:20%;width:15%;border-top:0;border-right:0;border-bottom:0}
+.hide-safe .safe{display:none}
+.frame-notes{font-size:.82rem;display:flex;flex-direction:column;gap:4px}
+.frame-notes .vo{color:var(--muted)}
+.frame-notes .cam{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.board-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:720px){.board-grid{grid-template-columns:minmax(0,1fr)}}
+.panel{border:1px solid var(--line);border-radius:var(--r-m);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg);min-width:0}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.checks label{display:flex;gap:8px;align-items:flex-start;font-size:.88rem;cursor:pointer}
+.checks input{margin-top:3px;accent-color:var(--accent)}
+.checks input:checked + span{text-decoration:line-through;color:var(--muted)}
+.road{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.road li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.road li:first-child{border-top:0}
+.road .d{font-family:var(--f-mono);font-size:.74rem;color:var(--accent);font-weight:500;padding-top:2px}
+.road b{font-size:.9rem;display:block}
+.road span{font-size:.82rem;color:var(--muted)}
+
+/* Publish */
+.hookcard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 18px;align-items:center}
+.hookcard .ring{width:58px}.hookcard .ring b{width:46px;font-size:1.1rem}
+.hookcard p .ib{vertical-align:middle;width:28px;height:28px}
+.ring{--v:50;--c:var(--accent);width:78px;aspect-ratio:1;border-radius:50%;background:conic-gradient(var(--c) calc(var(--v)*1%),var(--sunken) 0);display:grid;place-items:center;max-width:100%}
+.ring b{width:62px;aspect-ratio:1;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-family:var(--f-display);font-size:1.4rem}
+.hookcard ul{margin:6px 0 0;padding-left:18px;font-size:.86rem;color:var(--muted)}
+.better{margin-top:8px;padding:8px 12px;border-radius:var(--r-s);background:var(--accent-soft);font-weight:600;font-size:.92rem}
+.kit{padding:0;overflow:hidden}
+.kit-tabs{display:flex;gap:2px;padding:8px 8px 0;border-bottom:1px solid var(--line);background:var(--bg);overflow-x:auto}
+.kit-tab{border:0;background:none;padding:9px 14px;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap}
+.kit-tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 -2px 0 var(--accent) inset}
+.kit-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.blk{border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.blk-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.blk-head .r{display:flex;gap:4px;align-items:center}
+.blk-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.counter{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.counter.over{color:var(--bad);font-weight:600}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
+.opt:first-of-type{border-top:0}
+.opt span{min-width:0;overflow-wrap:anywhere}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;font-size:.84rem;background:var(--bg)}
+.tag[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.tag .tier{font-family:var(--f-mono);font-size:.64rem;color:var(--muted);margin-left:4px}
+.kit-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.kit-grid{grid-template-columns:minmax(0,1fr)}}
+.human{display:flex;gap:8px;align-items:center;font-size:.84rem;color:var(--muted)}
+.human b{color:var(--good)}
+
+/* Library */
+.lib-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
+.lib{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:86px minmax(0,1fr) 150px auto;gap:12px;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m)}
+.row .type{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;color:var(--muted)}
+.row .ti{min-width:0}
+.row .ti b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:640px){.row{grid-template-columns:minmax(0,1fr) auto}.row .type{grid-column:1 / -1}}
+.stage{border:1px solid var(--line);border-radius:999px;padding:5px 10px;background:var(--bg);font-weight:600;font-size:.82rem;width:auto}
+.empty{padding:36px 24px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;border:1.5px dashed var(--line);border-radius:var(--r-l)}
+.pipeline-count{display:flex;gap:8px;flex-wrap:wrap}
+
+/* How it works */
+.how{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.how{grid-template-columns:minmax(0,1fr)}}
+.how .card{padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.how .wide{grid-column:1 / -1}
+.flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;counter-reset:s}
+@media (max-width:860px){.flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.flow li{list-style:none;border:1px solid var(--line);border-radius:var(--r-m);padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:4px;font-size:.84rem}
+.flow li::before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:var(--f-mono);font-size:.72rem;color:var(--accent)}
+.flow b{font-size:.92rem}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+pre.prompt{margin:0;max-height:340px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:12px;font:12px/1.55 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+details summary{cursor:pointer;font-weight:600}
+
+/* Reviews */
+.rev{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.rev{grid-template-columns:minmax(0,1fr)}}
+.rev .card{padding:20px;display:flex;flex-direction:column;gap:16px}
+.stars{display:flex;gap:4px}
+.stars button{border:1.5px solid var(--line);background:var(--bg);width:38px;height:34px;border-radius:9px;cursor:pointer;font-family:var(--f-mono);font-weight:600}
+.stars button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rate-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.avg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.avg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.avg div{border:1px solid var(--line);border-radius:var(--r-m);padding:10px;background:var(--bg)}
+.avg b{font-family:var(--f-display);font-size:1.4rem;display:block}
+.review{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+
+/* Simplified layer: icon buttons, disclosures, compact cards */
+.ib{width:34px;height:34px;display:inline-grid;place-items:center;border:0;background:none;border-radius:9px;color:var(--muted);cursor:pointer;flex:none;padding:0}
+.ib:hover{background:var(--sunken);color:var(--ink)}
+.ib.ok{color:var(--good)}
+.ib svg{width:18px;height:18px}
+details.more{border-top:1px solid var(--line);padding-top:14px}
+details.more > summary,details.why > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+details.more > summary::-webkit-details-marker,details.why > summary::-webkit-details-marker{display:none}
+details.more > summary{font-weight:600;font-size:.9rem}
+details.more > summary::before,details.why > summary::before{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px;flex:none}
+details[open] > summary::before{transform:rotate(45deg)}
+details.more .sum{font-weight:400;font-size:.82rem;color:var(--muted)}
+.more-body{display:flex;flex-direction:column;gap:18px;padding-top:16px}
+details.why{grid-column:2 / -1}
+details.why > summary{font-size:.82rem;color:var(--muted);font-weight:600;width:max-content}
+details.why > summary:hover{color:var(--ink)}
+.why-body{display:flex;flex-direction:column;gap:8px;padding-top:10px;font-size:.88rem;max-width:62ch}
+.why-body ul{margin:0;padding-left:18px;color:var(--muted)}
+.filelink{font-size:.84rem;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;width:max-content;max-width:100%}
+.filelink.over,#uTranscript:focus + .filelink{color:var(--ink)}
+.source{padding:10px 12px;border-radius:var(--r-m);background:var(--accent-soft)}
+.foot{display:flex;gap:10px;justify-content:center;align-items:center;padding-block:40px 0;color:var(--muted);font-size:.86rem}
+.who{margin:0;font-size:.9rem;min-width:0}
+.score{text-align:right;display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.score b{font-family:var(--f-display);font-size:1.6rem}
+.score span{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.idea-foot{grid-column:2 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.idea-foot .grow{flex:1}
+.showmore{align-self:center}
+.title-main{font-family:var(--f-display);font-weight:500;font-size:1.08rem}
+.safe-key{display:flex;gap:6px;align-items:center;cursor:pointer;width:max-content;max-width:100%}
+.safe-key input{accent-color:var(--rec)}
+.board-tabs{display:flex;flex-direction:column;gap:10px}
+.board-tabs .seg{align-self:flex-start}
+.kit-more .kit-grid{padding-top:14px}
+
+/* Sheet + toast */
+.scrim{position:fixed;inset:0;background:rgba(8,12,10,.45);z-index:40;display:grid;place-items:center;padding:16px}
+.sheet{background:var(--surface);border-radius:var(--r-l);width:min(560px,100%);max-height:calc(100% - 32px);overflow:auto;padding:22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px -30px rgba(0,0,0,.6)}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:520px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.engine-opt{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1.5px solid var(--line);border-radius:var(--r-m);cursor:pointer}
+.engine-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.engine-opt input{margin-top:4px;accent-color:var(--accent)}
+.engine-opt .st{font-size:.8rem;font-weight:600}
+.engine-opt .st.ok{color:var(--good)} .engine-opt .st.no{color:var(--muted)}
+.toasts{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;width:min(460px,calc(100% - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:var(--r-m);font-size:.9rem;box-shadow:var(--shadow);animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(8px);opacity:.4}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.kn-note{font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="6" y="1.5" width="14" height="23" rx="3.5" stroke="currentColor" stroke-width="2"/><path d="M10 18.5c1.5-3 4.5-1.5 5.5-5S14 8.5 16 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1.5 2.4"/><circle cx="16" cy="6.6" r="1.9" fill="currentColor"/><circle cx="10" cy="18.6" r="1.4" fill="currentColor"/></svg>
+      Reelmap
+    </div>
+    <div class="tabs-wrap">
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" data-view="plan" aria-selected="true"><span class="step">1</span><span data-i18n="nav.plan">Plan</span></button>
+        <button class="tab" role="tab" data-view="publish" aria-selected="false"><span class="step">2</span><span data-i18n="nav.publish">Publish</span></button>
+        <button class="tab" role="tab" data-view="library" aria-selected="false"><span data-i18n="nav.library">Library</span> <span class="count" id="libCount" hidden>0</span></button>
+      </nav>
+    </div>
+    <div class="tools">
+      <button class="engine" id="engineChip" data-engine="offline" title="AI engine: tap to change"><span class="dot"></span><span id="engineLabel">Offline</span></button>
+      <div class="seg" role="group" aria-label="Interface language">
+        <button data-ui-lang="en" aria-pressed="true">EN</button>
+        <button data-ui-lang="kn" aria-pressed="false">ಕನ್ನಡ</button>
+      </div>
+      <button class="btn sm" data-go="reviews" data-i18n="nav.reviews">Feedback</button>
+    </div>
+  </div>
+</header>
+
+<div class="profile-strip">
+  <p class="who"><span class="muted" data-i18n="profile.creating">For</span> <span id="profileWho"></span> <button class="linkbtn" id="editProfile" data-i18n="profile.edit">Edit</button></p>
+  <div class="welcome" id="welcome" hidden>
+    <span>This is an example. <b>Set your niche once</b> and every idea fits you.</span>
+    <span class="actions"><button class="btn primary sm" id="welcomeGo">Set up</button><button class="ib" id="welcomeX" aria-label="Dismiss" title="Dismiss">✕</button></span>
+  </div>
+</div>
+
+<main>
+  <!-- PHASE 1: PLAN -->
+  <section class="view" id="view-plan">
+    <div class="work">
+      <form class="card brief" id="planForm" autocomplete="off">
+        <h2 data-i18n="plan.title">What do you want to make?</h2>
+        <div class="field">
+          <label for="pTopic" data-i18n="plan.topic">Topic or rough idea</label>
+          <textarea id="pTopic" rows="2" placeholder="e.g. cheap breakfast spots near my college. Leave blank for surprises."></textarea>
+        </div>
+        <div class="field">
+          <span class="label-row"><span data-i18n="plan.format">Format</span></span>
+          <div class="choices three" id="pFormat">
+            <button type="button" class="choice" data-v="faceless" aria-pressed="true" title="Voiceover, hands, screen, b-roll"><b data-i18n="fmt.faceless">Faceless</b></button>
+            <button type="button" class="choice" data-v="face" aria-pressed="false" title="You talk to the camera"><b data-i18n="fmt.face">On camera</b></button>
+            <button type="button" class="choice" data-v="product" aria-pressed="false" title="The product is the star"><b data-i18n="fmt.product">Product only</b></button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label-row"><span data-i18n="plan.platform">Platform</span></span>
+          <div class="chips" id="pPlatform"></div>
+        </div>
+        <details class="more" id="pMore">
+          <summary><span data-i18n="more">More options</span> <span class="sum" id="pMoreSum"></span></summary>
+          <div class="more-body">
+            <div class="field">
+              <span class="label-row"><span data-i18n="plan.goal">Goal</span></span>
+              <div class="chips" id="pGoal"></div>
+            </div>
+            <div class="field">
+              <span class="label-row"><span data-i18n="plan.lang">Output language</span></span>
+              <div class="chips" id="pLang"></div>
+            </div>
+            <div class="field">
+              <div class="label-row"><span data-i18n="plan.refs">Reference images</span><span class="small muted" data-i18n="plan.refs.max">up to 2</span></div>
+              <label class="drop" id="pDrop" for="pRefs">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="2" fill="currentColor"/><path d="M4 18l5-5 4 4 3-3 4 4" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                <span data-i18n="plan.refs.hint">Add images whose look you like</span>
+              </label>
+              <input type="file" id="pRefs" accept="image/png,image/jpeg,image/webp" multiple class="sr">
+              <div class="thumbs" id="pThumbs"></div>
+            </div>
+          </div>
+        </details>
+        <button type="submit" class="btn primary big" id="pGo"><span data-i18n="plan.go">Get 5 ideas</span></button>
+      </form>
+
+      <div class="results" id="planResults" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- PHASE 2: PUBLISH -->
+  <section class="view" id="view-publish" hidden>
+    <div class="work">
+      <form class="card brief" id="pubForm" autocomplete="off">
+        <h2 data-i18n="pub.title">Paste your script, get the post kit</h2>
+        <div id="pubSource"></div>
+        <div class="field">
+          <div class="label-row"><label for="uTranscript" data-i18n="pub.transcript">What you say in the video</label><span class="counter" id="uWords">0 words</span></div>
+          <textarea id="uTranscript" rows="7" placeholder="Paste your transcript or script here."></textarea>
+          <label class="filelink" for="uFile" id="uDrop"><span id="uDropText">or upload a captions file (.srt, .vtt, .txt)</span></label>
+          <input type="file" id="uFile" class="sr" accept=".txt,.srt,.vtt,text/plain,audio/*,video/*">
+        </div>
+        <div class="field">
+          <span class="label-row"><span data-i18n="pub.platforms">Post to</span></span>
+          <div class="chips" id="uPlatforms"></div>
+        </div>
+        <details class="more" id="uMore">
+          <summary><span data-i18n="more">More options</span> <span class="sum" id="uMoreSum"></span></summary>
+          <div class="more-body">
+            <div class="field">
+              <label for="uTopic" data-i18n="pub.topic">What's the video about?</label>
+              <input type="text" id="uTopic" placeholder="e.g. 5 breakfasts under ₹80 in Jayanagar">
+            </div>
+            <div class="field">
+              <span class="label-row"><span data-i18n="pub.voice">Caption voice</span></span>
+              <div class="chips" id="uVoice"></div>
+            </div>
+            <div class="field">
+              <span class="label-row"><span data-i18n="plan.lang">Output language</span></span>
+              <div class="chips" id="uLang"></div>
+            </div>
+          </div>
+        </details>
+        <button type="submit" class="btn primary big" id="uGo"><span data-i18n="pub.go">Make post kit</span></button>
+      </form>
+      <div class="results" id="pubResults" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="view" id="view-library" hidden>
+    <div class="lib-head">
+      <div>
+        <span class="label" data-i18n="lib.eyebrow">Your content pipeline</span>
+        <h2 data-i18n="lib.title">Library</h2>
+      </div>
+      <div class="actions">
+        <div class="chips" id="libFilter"></div>
+        <button class="btn sm" id="libExport" data-i18n="lib.export">Export all</button>
+      </div>
+    </div>
+    <div class="lib" id="libList"></div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="view" id="view-how" hidden>
+    <div class="how" id="howBody"></div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="view" id="view-reviews" hidden>
+    <div class="rev">
+      <form class="card" id="revForm" autocomplete="off">
+        <header style="display:flex;flex-direction:column;gap:4px">
+          <span class="label" data-i18n="rev.eyebrow">Two minutes, after you've tried both phases</span>
+          <h2 data-i18n="rev.title">Review Reelmap</h2>
+        </header>
+        <div id="revRatings" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div class="field">
+          <label for="rBest" data-i18n="rev.best">What was most useful?</label>
+          <textarea id="rBest" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="rConfusing" data-i18n="rev.confusing">What confused you or felt slow?</label>
+          <textarea id="rConfusing" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <span class="label-row"><span data-i18n="rev.use">Would you use this for your own content?</span></span>
+          <div class="chips" id="rUse"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="rRole" data-i18n="rev.role">You are a…</label>
+            <select id="rRole"><option>Content creator</option><option>Student</option><option>Small business owner</option><option>Designer or developer</option><option>Other</option></select>
+          </div>
+          <div class="field">
+            <div class="label-row"><label for="rName" data-i18n="rev.name">Name or handle</label><span class="small muted" data-i18n="optional">optional</span></div>
+            <input type="text" id="rName">
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="rSubmit" data-i18n="rev.submit">Send review</button>
+          <button type="button" class="btn" id="rCopy" data-i18n="rev.copy">Copy review as text</button>
+        </div>
+        <p class="small muted" id="revNote"></p>
+      </form>
+      <div class="card" id="revOwner">
+        <header style="display:flex;flex-direction:column;gap:4px">
+          <span class="label" data-i18n="rev.ownerEyebrow">Owner view</span>
+          <h2 data-i18n="rev.ownerTitle">What reviewers said</h2>
+        </header>
+        <div id="revOwnerBody"><p class="muted">Reviews sent from this page appear here for the page owner.</p></div>
+      </div>
+    </div>
+  </section>
+  <footer class="foot"><button class="linkbtn" data-go="how" data-i18n="nav.how">How Reelmap works</button><span aria-hidden="true">·</span><button class="linkbtn" data-go="reviews" data-i18n="nav.reviews2">Give feedback</button></footer>
+</main>
+
+<div id="sheetRoot"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Reelmap · plan content before you shoot, post it right after.
+   Engines: local open-source server (Ollama + Whisper) → Claude (in
+   the shared link) → offline templates. Same prompts for both AIs.
+   ============================================================ */
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clamp = (n, a, b) => Math.max(a, Math.min(b, Number.isFinite(+n) ? +n : a));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const KEY = "reelmap.v2";
+
+/* ---------- Platform knowledge (from 2026 public research; weights are our estimates) ---------- */
+const PLATFORMS = {
+  ig:  { name: "Instagram Reels", short: "IG Reels", len: 30, capLimit: 2200, titleLimit: 0, tags: 5,
+         weights: { completion: .30, shares: .30, saves: .25, ease: .15 },
+         slots: ["Tue–Thu · 7–9 PM IST", "Sat · 11 AM–1 PM IST"],
+         notes: "Watch time and completion, DM sends (shares) and saves drive reach. Original content only. Captions are searchable, so use plain keywords. 3–5 relevant hashtags." },
+  yts: { name: "YouTube Shorts", short: "Shorts", len: 40, capLimit: 5000, titleLimit: 100, tags: 3,
+         weights: { completion: .45, shares: .20, saves: .15, ease: .20 },
+         slots: ["Fri–Sun · 6–9 PM IST", "Weekdays · 1–3 PM IST"],
+         notes: "Completion and rewatches, low swipe-away. 25–50 seconds suits most niches. One clear niche. Reused or compiled clips are demoted. Titles and spoken words are indexed." },
+  yt:  { name: "YouTube video", short: "YouTube", len: 480, capLimit: 5000, titleLimit: 100, tags: 3,
+         weights: { completion: .45, shares: .15, saves: .15, ease: .25 },
+         slots: ["Thu–Sat · publish 5 PM IST, 2 h before evening peak"],
+         notes: "Click-through rate times average view duration. Keep the visible title under about 60 characters. Chapters help. The first 30 seconds decide retention." },
+  li:  { name: "LinkedIn", short: "LinkedIn", len: 60, capLimit: 3000, titleLimit: 0, tags: 3,
+         weights: { completion: .20, shares: .25, saves: .35, ease: .20 },
+         slots: ["Tue–Thu · 8–10 AM IST", "Wed · 12–1 PM IST"],
+         notes: "Dwell time, genuine comments in the first hour and saves. Keep links out of the post body. Three hashtags at most." }
+};
+const GOALS = { grow: "Grow followers", saves: "Get saves", sell: "Sell a product", trust: "Build trust" };
+const LANGS = { en: "English", kn: "ಕನ್ನಡ", kanglish: "Kanglish" };
+const VOICES = { friendly: "Friendly", witty: "Witty", expert: "Expert", calm: "Calm" };
+const FORMATS = { faceless: "Faceless", face: "On camera", product: "Product only" };
+const STAGES = ["Idea", "Scripted", "Filmed", "Posted"];
+
+/* ---------- Interface strings (EN / ಕನ್ನಡ) ---------- */
+const I18N = {
+  en: {},
+  kn: {
+    "nav.plan": "ಯೋಜನೆ", "nav.publish": "ಪಬ್ಲಿಶ್", "nav.library": "ಲೈಬ್ರರಿ", "nav.how": "Reelmap ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತೆ", "nav.reviews": "ಅಭಿಪ್ರಾಯ", "nav.reviews2": "ಅಭಿಪ್ರಾಯ ಕೊಡಿ",
+    "profile.creating": "ಯಾರಿಗೆ", "profile.edit": "ಬದಲಿಸಿ", "optional": "ಐಚ್ಛಿಕ", "more": "ಇನ್ನಷ್ಟು ಆಯ್ಕೆಗಳು",
+    "plan.eyebrow": "ಹಂತ 1 · ಶೂಟ್ ಮಾಡುವ ಮೊದಲು", "plan.title": "ಯಾವ ಕಂಟೆಂಟ್ ಮಾಡಬೇಕು?", "plan.topic": "ವಿಷಯ ಅಥವಾ ಐಡಿಯಾ",
+    "plan.format": "ಫಾರ್ಮ್ಯಾಟ್", "fmt.faceless": "ಮುಖ ತೋರಿಸದೆ", "fmt.faceless.d": "ವಾಯ್ಸ್‌ಓವರ್, ಕೈಗಳು, ಸ್ಕ್ರೀನ್, ಬಿ-ರೋಲ್",
+    "fmt.face": "ಕ್ಯಾಮೆರಾ ಮುಂದೆ", "fmt.face.d": "ನೀವೇ ಮಾತಾಡ್ತೀರಿ", "fmt.product": "ಪ್ರಾಡಕ್ಟ್ ಮಾತ್ರ", "fmt.product.d": "ಪ್ರಾಡಕ್ಟ್ ಹೀರೋ",
+    "plan.platform": "ಪ್ಲಾಟ್‌ಫಾರ್ಮ್", "plan.goal": "ಗುರಿ", "plan.refs": "ರೆಫರೆನ್ಸ್ ಚಿತ್ರಗಳು", "plan.refs.max": "2 ವರೆಗೆ",
+    "plan.refs.hint": "ನಿಮಗೆ ಇಷ್ಟವಾದ ಲುಕ್‌ನ ಚಿತ್ರ ಸೇರಿಸಿ", "plan.lang": "ಔಟ್‌ಪುಟ್ ಭಾಷೆ", "plan.go": "5 ಐಡಿಯಾ ಪಡೆಯಿರಿ",
+    "pub.eyebrow": "ಹಂತ 2 · ಶೂಟ್ ಆದ ಮೇಲೆ", "pub.title": "ಸ್ಕ್ರಿಪ್ಟ್ ಹಾಕಿ, ಪೋಸ್ಟ್ ಕಿಟ್ ಪಡೆಯಿರಿ", "pub.transcript": "ವಿಡಿಯೋದಲ್ಲಿ ನೀವು ಹೇಳೋದು",
+    "pub.topic": "ವಿಡಿಯೋ ಯಾವುದರ ಬಗ್ಗೆ?", "pub.platforms": "ಎಲ್ಲಿ ಪೋಸ್ಟ್ ಮಾಡ್ತೀರಿ", "pub.multi": "ಒಂದು ಅಥವಾ ಹೆಚ್ಚು",
+    "pub.voice": "ಕ್ಯಾಪ್ಷನ್ ಧ್ವನಿ", "pub.go": "ಪೋಸ್ಟ್ ಕಿಟ್ ಮಾಡಿ",
+    "lib.eyebrow": "ನಿಮ್ಮ ಕಂಟೆಂಟ್ ಪೈಪ್‌ಲೈನ್", "lib.title": "ಲೈಬ್ರರಿ", "lib.export": "ಎಲ್ಲಾ ಎಕ್ಸ್‌ಪೋರ್ಟ್",
+    "rev.eyebrow": "ಎರಡೂ ಹಂತ ಬಳಸಿದ ಮೇಲೆ, ಎರಡು ನಿಮಿಷ", "rev.title": "Reelmap ವಿಮರ್ಶೆ", "rev.best": "ಯಾವುದು ಹೆಚ್ಚು ಉಪಯೋಗ ಆಯ್ತು?",
+    "rev.confusing": "ಯಾವುದು ಗೊಂದಲ ಅಥವಾ ನಿಧಾನ ಅನಿಸಿತು?", "rev.use": "ನಿಮ್ಮ ಕಂಟೆಂಟ್‌ಗೆ ಇದನ್ನು ಬಳಸ್ತೀರಾ?", "rev.role": "ನೀವು…",
+    "rev.name": "ಹೆಸರು ಅಥವಾ ಹ್ಯಾಂಡಲ್", "rev.submit": "ವಿಮರ್ಶೆ ಕಳಿಸಿ", "rev.copy": "ಟೆಕ್ಸ್ಟ್ ಆಗಿ ಕಾಪಿ",
+    "rev.ownerEyebrow": "ಓನರ್ ನೋಟ", "rev.ownerTitle": "ವಿಮರ್ಶಕರು ಏನು ಹೇಳಿದರು",
+    "copy": "ಕಾಪಿ", "copied": "ಕಾಪಿ ಆಯ್ತು", "listen": "ಕೇಳಿ", "save": "ಸೇವ್", "saved": "ಲೈಬ್ರರಿಗೆ ಸೇವ್ ಆಯ್ತು",
+    "storyboard": "ಸ್ಟೋರಿಬೋರ್ಡ್", "use": "ಪೋಸ್ಟ್ ಕಿಟ್‌ಗೆ ಬಳಸಿ", "stop": "ನಿಲ್ಲಿಸಿ", "regen": "ಮತ್ತೆ ಮಾಡಿ",
+    "thinking": "ಯೋಚಿಸ್ತಿದೆ…", "example": "ಉದಾಹರಣೆ",
+    "download": "ಡೌನ್‌ಲೋಡ್", "copyAll": "ಎಲ್ಲಾ ಕಾಪಿ"
+  }
+};
+const EN_DYN = { copy: "Copy", copied: "Copied", listen: "Listen", save: "Save", saved: "Saved to Library", storyboard: "Storyboard",
+  use: "Use in Publish", stop: "Stop", regen: "Regenerate", thinking: "Thinking…", ideasFor: "ideas, ranked for", example: "Example",
+  download: "Download", copyAll: "Copy all" };
+const t = k => (S.uiLang === "kn" && I18N.kn[k]) || EN_DYN[k] || k;
+
+/* ---------- State ---------- */
+const DEFAULT_PROFILE = { niche: "Budget food & cafés", audience: "college students", location: "Bengaluru", platforms: ["ig", "yts"], lang: "en", handle: "" };
+const S = {
+  profile: { ...DEFAULT_PROFILE },
+  uiLang: "en",
+  plan: { format: "faceless", platform: "ig", goal: "grow", lang: "en", topic: "", refs: [], ideas: [], selected: -1, board: null, engine: "offline", example: true, refStyle: "" },
+  pub: { platforms: ["ig", "yts"], voice: "friendly", lang: "en", kits: {}, active: "ig", variant: {}, hook: null, removed: 0, example: true, source: null, engine: "offline", tagsOff: {} },
+  library: [],
+  libFilter: "All",
+  engine: { mode: "auto", local: null, localErr: "", sample: null, sampleBlocked: false, downloads: null, checkingLocal: true },
+  busy: null
+};
+
+function loadStore() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || "{}");
+    if (d.profile) S.profile = { ...DEFAULT_PROFILE, ...d.profile };
+    if (Array.isArray(d.library)) S.library = d.library;
+    if (d.uiLang) S.uiLang = d.uiLang;
+    if (d.engineMode) S.engine.mode = d.engineMode;
+    return !!d.profile;
+  } catch { return false; }
+}
+function persist() {
+  try { localStorage.setItem(KEY, JSON.stringify({ profile: S.profile, library: S.library, uiLang: S.uiLang, engineMode: S.engine.mode })); } catch {}
+}
+
+/* ---------- Small UI helpers ---------- */
+function toast(msg, ms = 3200) {
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg;
+  $("#toasts").append(el);
+  setTimeout(() => el.remove(), ms);
+}
+const COPY = new Map();
+function copyId(text) { const id = "c" + uid(); COPY.set(id, text); return id; }
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); flash(btn); }
+  catch {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.append(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    if (ok) flash(btn); else toast("Copy is blocked here. Select the text and copy it manually.");
+  }
+}
+const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  copy: svgI('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>'),
+  listen: svgI('<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'),
+  save: svgI('<path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/>'),
+  regen: svgI('<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>'),
+  download: svgI('<path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/>'),
+  check: svgI('<path d="m5 12 5 5 9-10"/>')
+};
+const ib = (icon, label, attrs = "") => `<button class="ib" type="button" title="${esc(label)}" aria-label="${esc(label)}" ${attrs}>${ICON[icon]}</button>`;
+function flash(btn) {
+  if (!btn) return; const o = btn.innerHTML;
+  if (btn.classList.contains("ib")) { btn.innerHTML = ICON.check; btn.classList.add("ok"); setTimeout(() => { btn.innerHTML = o; btn.classList.remove("ok"); }, 1200); return; }
+  btn.textContent = t("copied"); setTimeout(() => { btn.innerHTML = o; }, 1200);
+}
+function chips(el, opts, selected, { multi = false, onChange } = {}) {
+  el.innerHTML = Object.entries(opts).map(([v, label]) =>
+    `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${multi ? selected.includes(v) : selected === v}">${esc(label)}</button>`).join("");
+  el.onclick = e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    if (multi) {
+      const on = b.getAttribute("aria-pressed") !== "true";
+      const cur = $$(".chip", el).filter(x => x === b ? on : x.getAttribute("aria-pressed") === "true").map(x => x.dataset.v);
+      if (!cur.length) { toast("Pick at least one."); return; }
+      b.setAttribute("aria-pressed", on); onChange?.(cur);
+    } else {
+      $$(".chip", el).forEach(x => x.setAttribute("aria-pressed", x === b)); onChange?.(b.dataset.v);
+    }
+  };
+}
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+
+/* ---------- Read aloud (browser voices) ---------- */
+function speak(text, lang) {
+  if (!("speechSynthesis" in window)) { toast("Read-aloud isn't supported in this browser."); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/#\w+/g, ""));
+  const voices = speechSynthesis.getVoices();
+  const want = lang === "kn" ? "kn" : "en-IN";
+  const v = voices.find(v => v.lang.toLowerCase().startsWith(want.toLowerCase())) || (lang !== "kn" && voices.find(v => v.lang.startsWith("en")));
+  if (lang === "kn" && !v) toast("No Kannada voice on this device, so the default voice is reading.");
+  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = lang === "kn" ? "kn-IN" : "en-IN";
+  u.rate = 1;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- Humanizer: strips stock AI phrasing ---------- */
+const ROBOTIC = [
+  [/\s*—\s*/g, ", "], [/\s–\s/g, ", "],
+  [/[,\s]*\b(let's|lets) dive in\b[.!:]?/gi, ""], [/\b(let's|lets) dive into\b/gi, "let's look at"], [/\bdive (deep )?into\b/gi, "look at"], [/\bdelve(s|d)? into\b/gi, "get into"],
+  [/\bgame[- ]changer\b/gi, "big help"], [/\bunlock(ing)? the (secrets?|power) of\b/gi, "using"], [/\bunlock\b/gi, "get"],
+  [/\belevate\b/gi, "improve"], [/\bseamless(ly)?\b/gi, "smooth$1"], [/\bin today's (fast[- ]paced |digital )?world,?\s*/gi, ""],
+  [/\bharness(ing)? the power of\b/gi, "using"], [/\btestament to\b/gi, "proof of"], [/\btapestry of\b/gi, "mix of"],
+  [/\bembark on\b/gi, "start"], [/\bit'?s (important|worth) (to note|noting) that\s*/gi, ""], [/\bin conclusion,?\s*/gi, ""],
+  [/\bcutting[- ]edge\b/gi, "new"], [/\brevolutioni[sz]e\b/gi, "change"], [/\bnavigat(e|ing) the (world|landscape) of\b/gi, "figuring out"],
+  [/\bbuckle up\b/gi, "okay"], [/\bwithout further ado,?\s*/gi, ""], [/\bmust[- ]try\b/gi, "worth trying"], [/!{2,}/g, "!"]
+];
+function humanize(str) {
+  let n = 0, s = String(str ?? "");
+  for (const [re, rep] of ROBOTIC) s = s.replace(re, (...m) => {
+    n++; let r = rep.replace("$1", typeof m[1] === "string" && rep.includes("$1") ? m[1] : "");
+    const lead = m[0].replace(/^[\s,]+/, "");
+    if (r && /^[A-Z]/.test(lead) && /^[a-z]/.test(r)) r = r[0].toUpperCase() + r.slice(1);
+    return r;
+  });
+  s = s.replace(/[,\s]+$/g, (m) => m.includes("\n") ? m.replace(/,/g, "") : "");
+  s = s.replace(/ ,/g, ",").replace(/,[ \t]*,/g, ",").replace(/[ \t]{2,}/g, " ").replace(/[ \t]+\n/g, "\n").replace(/^\s*,\s*/, "").trim();
+  if (s) s = s[0].toUpperCase() + s.slice(1);
+  return { text: s, n };
+}
+function humanizeDeep(obj, counter) {
+  if (typeof obj === "string") { const r = humanize(obj); counter.n += r.n; return r.text; }
+  if (Array.isArray(obj)) return obj.map(x => humanizeDeep(x, counter));
+  if (obj && typeof obj === "object") { const o = {}; for (const k in obj) o[k] = (k === "hashtags" || k === "scores") ? obj[k] : humanizeDeep(obj[k], counter); return o; }
+  return obj;
+}
+
+/* ============================================================
+   ENGINES
+   ============================================================ */
+async function detectLocal() {
+  S.engine.checkingLocal = true;
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 1800);
+    const r = await fetch("/api/health", { signal: ctl.signal, cache: "no-store" });
+    clearTimeout(tm);
+    if (r.ok && (r.headers.get("content-type") || "").includes("json")) {
+      const j = await r.json();
+      if (j && j.app === "reelmap") { S.engine.local = j; S.engine.localErr = j.model_ready ? "" : (j.error || "Model not ready"); }
+    }
+  } catch {}
+  S.engine.checkingLocal = false;
+  renderEngineChip();
+}
+function connectClaude() {
+  const c = window.claude;
+  if (!c || typeof c.use !== "function") return;
+  c.use("sample").then(s => { S.engine.sample = s || null; renderEngineChip(); }).catch(() => {});
+  c.use("downloads").then(d => { S.engine.downloads = d || null; }).catch(() => {});
+  initReviews();
+}
+const localReady = () => !!(S.engine.local && S.engine.local.model_ready);
+const geminiReady = () => !!(S.engine.local && S.engine.local.gemini_ready);
+const claudeReady = () => !!(S.engine.sample && !S.engine.sampleBlocked);
+const autoPick = () => geminiReady() ? "gemini" : localReady() ? "local" : claudeReady() ? "claude" : "offline";
+function activeEngine() {
+  const m = S.engine.mode;
+  if (m === "offline") return "offline";
+  if (m === "gemini") return geminiReady() ? "gemini" : "offline";
+  if (m === "local") return localReady() ? "local" : "offline";
+  if (m === "claude") return claudeReady() ? "claude" : "offline";
+  return autoPick();
+}
+function engineName(e) {
+  if (e === "gemini") return `Gemini · ${S.engine.local?.gemini_model || "Google AI"}`;
+  if (e === "local") return `Local AI · ${S.engine.local?.model || "Ollama"}`;
+  if (e === "claude") return "Claude AI";
+  return "Offline templates";
+}
+function renderEngineChip() {
+  const e = activeEngine();
+  const chip = $("#engineChip"); chip.dataset.engine = e;
+  $("#engineLabel").textContent = e === "gemini" ? "Gemini" : e === "local" ? "Local AI" : e === "claude" ? "Claude AI" : "Offline";
+  chip.title = `Writing with: ${engineName(e)}. Tap to change.`;
+  updateUploadHint();
+}
+
+function parseJSONLoose(text) {
+  if (typeof text !== "string") return text;
+  try { return JSON.parse(text); } catch {}
+  const f = text.match(/```(?:json)?\s*([\s\S]*?)```/); if (f) { try { return JSON.parse(f[1]); } catch {} }
+  const a = text.indexOf("{"), b = text.lastIndexOf("}");
+  if (a >= 0 && b > a) { try { return JSON.parse(text.slice(a, b + 1)); } catch {} }
+  throw Object.assign(new Error("The AI reply wasn't valid JSON."), { code: "invalid_json" });
+}
+const fileToB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
+
+/** Ask the active AI engine for JSON. Throws {code} on failure; caller falls back to offline. */
+async function aiJSON(prompt, { images = [], signal, onText, fresh = false } = {}) {
+  const e = activeEngine();
+  if (e === "gemini") {
+    const imgs = images.length ? await Promise.all(images.map(fileToB64)) : [];
+    const r = await fetch("/api/llm", { method: "POST", headers: { "Content-Type": "application/json" }, signal,
+      body: JSON.stringify({ prompt, images: imgs, format: "json", engine: "gemini" }) });
+    if (!r.ok) { let d = ""; try { d = (await r.json()).detail; } catch {} throw { code: "gemini_error", message: d || `Server error ${r.status}` }; }
+    const j = await r.json();
+    onText?.({ text: j.text || "" });
+    return parseJSONLoose(j.text);
+  }
+  if (e === "local") {
+    const imgs = (S.engine.local?.vision && images.length) ? await Promise.all(images.map(fileToB64)) : [];
+    const r = await fetch("/api/llm", { method: "POST", headers: { "Content-Type": "application/json" }, signal,
+      body: JSON.stringify({ prompt, images: imgs, format: "json", engine: "local" }) });
+    if (!r.ok) { let d = ""; try { d = (await r.json()).detail; } catch {} throw { code: "local_error", message: d || `Server error ${r.status}` }; }
+    const j = await r.json();
+    onText?.({ text: j.text || "" });
+    return parseJSONLoose(j.text);
+  }
+  if (e === "claude") {
+    const opts = { signal, onText };
+    if (images.length) opts.images = images;
+    if (fresh) opts.cache = false;
+    try { return await S.engine.sample.json(prompt, opts); }
+    catch (err) {
+      if (err && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(err.code)) {
+        S.engine.sampleBlocked = true; renderEngineChip();
+      }
+      if (err && err.code === "images_unavailable" && images.length) return aiJSON(prompt, { signal, onText, fresh });
+      throw err;
+    }
+  }
+  throw { code: "offline" };
+}
+function failMessage(err) {
+  const c = err?.code;
+  if (c === "cancelled" || err?.name === "AbortError") return null;
+  if (c === "offline") return null;
+  if (c === "not_granted") return "Claude AI wasn't allowed for this page, so Reelmap used offline templates.";
+  if (c === "rate_limited") return "The AI is busy or your usage limit was reached. Showing offline results; try again in a bit.";
+  if (c === "session_expired") return "Your Claude session expired. Sign in again to use AI. Showing offline results.";
+  if (c === "local_error") return `Local server: ${err.message}. Showing offline results.`;
+  if (c === "gemini_error") return `Gemini API: ${err.message}. Showing offline results.`;
+  if (c === "invalid_json") return "The AI reply came back malformed. Showing offline results; press Regenerate to try again.";
+  return "The AI didn't answer, so Reelmap used offline templates.";
+}
+
+/* Busy state with elapsed timer + Stop */
+function startBusy(container, label) {
+  S.busy?.ctl.abort();
+  const ctl = new AbortController(), t0 = Date.now();
+  const el = document.createElement("div");
+  el.className = "status";
+  el.innerHTML = `<span class="spin" aria-hidden="true"></span><span class="grow"><span class="lbl">${esc(label)}</span> <span class="mono small muted tm">0s</span></span><button type="button" class="btn sm">${t("stop")}</button>`;
+  el.querySelector("button").onclick = () => ctl.abort();
+  container.prepend(el);
+  const iv = setInterval(() => { el.querySelector(".tm").textContent = Math.round((Date.now() - t0) / 1000) + "s"; }, 500);
+  S.busy = { ctl, el, done() { clearInterval(iv); el.remove(); if (S.busy?.ctl === ctl) S.busy = null; },
+    progress(text) { el.querySelector(".lbl").textContent = label + (text ? ` · ${text.length.toLocaleString()} characters written` : ""); } };
+  return S.busy;
+}
+
+/* ============================================================
+   PROMPTS (shared by local open-source model and Claude)
+   ============================================================ */
+function profileLine(p = S.profile) {
+  return `Niche: ${p.niche}. Audience: ${p.audience}${p.location ? ` in ${p.location}` : ""}.${p.handle ? ` Handle: ${p.handle}.` : ""}`;
+}
+const WRITING_RULES = `Writing rules (follow all of them):
+- Sound like a real creator talking to a friend. Short sentences. Specific details over hype.
+- Never use em dashes. Never use: delve, elevate, unlock, game-changer, dive in, seamless, harness, tapestry, testament, embark, "in today's world", "it's important to note".
+- No invented statistics, prices or claims the creator didn't give. If unsure, keep it general.
+- Hooks must work in the first 2 seconds with the sound off (as on-screen text).`;
+function langRule(lang) {
+  if (lang === "kn") return "Language: write all creator-facing text (hooks, on-screen text, voiceover, captions, titles, comments) in Kannada script, conversational Bengaluru Kannada. Common English words for platforms and tech (Reel, follow, save, comment) may stay in English. JSON keys stay in English.";
+  if (lang === "kanglish") return "Language: write all creator-facing text in Kanglish: Kannada written in English letters, mixed naturally with English, the way Bengaluru creators type on WhatsApp (e.g. \"Idu try maadi, worth aagutte\"). JSON keys stay in English.";
+  return "Language: write in simple Indian English.";
+}
+function buildIdeasPrompt(c) {
+  const P = PLATFORMS[c.platform];
+  return `You are Reelmap, a content strategist for Indian short-form creators.
+
+Creator profile. ${profileLine()}
+Topic or rough idea: ${c.topic || "(none given, choose strong topics inside the niche)"}
+Format: ${FORMATS[c.format]} (${c.format === "faceless" ? "no face on screen: voiceover, hands, screen recordings, b-roll, text on screen" : c.format === "face" ? "creator speaks to camera" : "only the product is shown: macro shots, hands, process, before/after"})
+Platform: ${P.name}. What it rewards: ${P.notes}
+Goal: ${GOALS[c.goal]}
+${c.refCount ? `The creator attached ${c.refCount} reference image(s). Describe their visual style in one sentence (colour, framing, light) in "reference_style" and let ideas suit that look.` : ""}
+
+Task: give 5 distinct content ideas. Each must use a different structure (for example: mistakes list, myth vs fact, budget challenge, POV, before/after, ranking, quick tutorial, hidden gem, process, comparison).
+Score each from 0 to 100 on: completion (will people watch to the end), saves, shares (will they send it to a friend), effort (how hard to make; 100 = very hard). Be realistic, not generous.
+
+${WRITING_RULES}
+${langRule(c.lang)}
+
+Reply with only this JSON:
+{"reference_style": "", "ideas": [{"title": "short internal name", "hook": "first line, under 12 words", "angle": "one sentence: what the video shows", "length_sec": ${P.len}, "scores": {"completion": 0, "saves": 0, "shares": 0, "effort": 0}, "why": "one sentence: which platform signal this targets"}]}`;
+}
+function buildBoardPrompt(c) {
+  const P = PLATFORMS[c.platform], i = c.idea;
+  return `You are Reelmap, a storyboard artist and producer for short-form video.
+
+Creator profile. ${profileLine()}
+Format: ${FORMATS[c.format]}. Platform: ${P.name}. Target length: about ${i.length_sec || P.len} seconds.
+Idea: ${i.title}
+Hook: ${i.hook}
+Angle: ${i.angle}
+${c.refCount ? `Reference images attached (${c.refCount}). Match their framing, colour and light in every frame, and set "ref" to the index (0-based) of the image each frame should follow, or null.` : ""}
+
+Task: plan the shoot.
+- 5 frames: hook (0 to 3 s), setup, value, payoff, loop/CTA. Each with timing, what the camera sees, on-screen text (max 7 words, must read with sound off), voiceover line, and a camera note (angle, distance, light).
+- Keep on-screen text out of the bottom 20% and right 15% of the frame (app buttons cover it).
+- shot_list: 5 to 8 concrete shots to capture.
+- props: what to keep ready.
+- roadmap: 7 days from idea to posted and reviewed, one practical task per day.
+
+${WRITING_RULES}
+${langRule(c.lang)}
+
+Reply with only this JSON:
+{"style_notes": "", "frames": [{"time": "0:00–0:03", "shot": "Hook", "visual": "", "onscreen": "", "voiceover": "", "camera": "", "ref": null}], "shot_list": [""], "props": [""], "roadmap": [{"day": "Day 1", "task": "", "detail": ""}]}`;
+}
+function buildKitPrompt(c) {
+  const P = PLATFORMS[c.platform];
+  return `You are Reelmap, a social media editor who writes captions that sound human.
+
+Creator profile. ${profileLine()}
+Platform: ${P.name}. What it rewards: ${P.notes}
+Limits: caption ${P.capLimit} characters${P.titleLimit ? `, title ${P.titleLimit} characters (aim for under 60)` : ""}, ${P.tags} hashtags in total.
+Caption voice: ${VOICES[c.voice]}.
+${c.topic ? `Video topic: ${c.topic}` : ""}
+Transcript of the finished video:
+"""
+${c.transcript.slice(0, 6000)}
+"""
+
+Task: write the post kit for this exact video. Use details from the transcript. Do not invent facts.
+- titles: 3 options${P.titleLimit ? "" : " (used as the first line / on-cover text)"}.
+- caption_short: 1 to 3 lines. caption_story: 4 to 7 short lines with a line break between ideas. Both end with one clear call to action that fits the goal (save, send, comment, follow).
+- hashtags: broad (big topic), niche (this niche), micro (this exact video). ${P.tags} total across all three groups, no hashtag stuffing.
+- spoken_keywords: 3 to 5 search phrases the creator should say out loud in the first 10 seconds.
+- pinned_comment: a question that gets real replies.
+- thumbnail_text: 3 options, max 4 words each.
+- hook_score 0 to 100 for the transcript's first line, hook_feedback (one sentence), better_hook (one line, under 12 words).
+- alt_text: one sentence describing the video for accessibility.
+- first_hour: 3 actions for the first hour after posting.
+
+${WRITING_RULES}
+${langRule(c.lang)}
+
+Reply with only this JSON:
+{"titles": ["", "", ""], "caption_short": "", "caption_story": "", "hashtags": {"broad": [], "niche": [], "micro": []}, "spoken_keywords": [], "pinned_comment": "", "thumbnail_text": ["", "", ""], "hook_score": 0, "hook_feedback": "", "better_hook": "", "alt_text": "", "first_hour": ["", "", ""]}`;
+}
+
+/* ============================================================
+   OFFLINE ENGINE (templates + rules; never fails on stage)
+   ============================================================ */
+const ARCH = [
+  { id: "mistakes", title: "3 mistakes list", fit: { faceless: 1, face: .9, product: .5 }, s: [72, 84, 62, 35],
+    hook: { en: "3 mistakes everyone makes with {t}", kn: "{t} ಬಗ್ಗೆ ಎಲ್ಲರೂ ಮಾಡೋ 3 ತಪ್ಪುಗಳು", kanglish: "{t} bagge ellaru maado 3 mistakes" },
+    angle: "Name three common mistakes with {t}, then show the fix for each in one quick shot.",
+    why: "List formats get saved for later and finish fast, which helps completion.",
+    beats: [["Hook", "3 mistakes with {t}", "You're probably doing at least one of these."], ["Mistake 1", "Mistake #1", "First one, and it's the most common."], ["Mistake 2", "Mistake #2", "This one costs you time and money."], ["Mistake 3 + fix", "Do this instead", "Last one, and here's the simple fix."], ["Loop / CTA", "Save for later", "Which one were you doing? Save this before you forget."]] },
+  { id: "myth", title: "Myth vs fact", fit: { faceless: .9, face: 1, product: .5 }, s: [70, 60, 80, 30],
+    hook: { en: "Everyone believes this about {t}. It's wrong.", kn: "{t} ಬಗ್ಗೆ ಎಲ್ಲರೂ ನಂಬೋದು ತಪ್ಪು", kanglish: "{t} bagge ellaru nambodu tappu" },
+    angle: "Take one popular belief about {t}, show why it's wrong, and give the real answer.",
+    why: "Correcting a popular belief makes people send it to friends, which drives shares.",
+    beats: [["Hook", "Myth: {t}", "Everyone says this. Let's check it."], ["The myth", "What people think", "Here's what most people believe."], ["The proof", "What actually happens", "But look at this."], ["The fact", "The real answer", "So here's what's actually true."], ["Loop / CTA", "Send this to that friend", "Send this to the friend who still believes it."]] },
+  { id: "budget", title: "₹200 challenge", fit: { faceless: .8, face: 1, product: .6 }, s: [82, 70, 72, 45],
+    hook: { en: "I tried {t} with just ₹200", kn: "₹200 ಒಳಗೆ {t} ಟ್ರೈ ಮಾಡಿದೆ", kanglish: "₹200 olage {t} try maadide" },
+    angle: "Set a strict budget for {t} and show every rupee, ending with a verdict.",
+    why: "A money challenge creates suspense, so people stay to see the final total.",
+    beats: [["Hook", "₹200. {t}. Let's go.", "I have two hundred rupees. Let's see how far it goes."], ["Stop 1", "₹ spent so far", "First stop, and here's what it cost."], ["Stop 2", "Running total", "Second one. Still under budget?"], ["Verdict", "Final total", "Final total, and was it worth it?"], ["Loop / CTA", "Your ₹200 pick?", "What would you buy with two hundred? Tell me below."]] },
+  { id: "pov", title: "POV moment", fit: { faceless: .6, face: 1, product: .4 }, s: [76, 45, 82, 25],
+    hook: { en: "POV: you finally figured out {t}", kn: "POV: ಕೊನೆಗೂ {t} ಅರ್ಥ ಆಯ್ತು", kanglish: "POV: kone-gu {t} artha aaytu" },
+    angle: "A relatable moment about {t} acted out in under 20 seconds.",
+    why: "Relatable moments get tagged and sent in DMs, the strongest Reels signal.",
+    beats: [["Hook", "POV: {t}", "That moment when it finally clicks."], ["Before", "Me, before", "Me, every single time before this."], ["The switch", "Then I learned this", "Then someone told me this."], ["After", "Me, now", "And now look at me."], ["Loop / CTA", "Tag that one friend", "Tag the friend who needs this."]] },
+  { id: "beforeafter", title: "Before and after", fit: { faceless: .8, face: .6, product: 1 }, s: [84, 58, 64, 50],
+    hook: { en: "Before vs after: {t}", kn: "{t}: ಮೊದಲು vs ಈಗ", kanglish: "{t}: modlu vs eega" },
+    angle: "Show a clear before, the change, and a satisfying after for {t}.",
+    why: "People watch to the end to see the reveal, which lifts completion.",
+    beats: [["Hook", "Wait for the after", "Watch what this turns into."], ["Before", "Before", "Here's where it started."], ["Process", "The change", "Here's the one thing that changed."], ["After", "After", "And here's the result."], ["Loop / CTA", "Again from the start?", "Watch it again and spot the moment it changed."]] },
+  { id: "tier", title: "Worst-to-best ranking", fit: { faceless: .9, face: .9, product: .7 }, s: [80, 55, 70, 40],
+    hook: { en: "Ranking {t} from worst to best", kn: "{t}: ಕೆಟ್ಟದ್ದರಿಂದ ಬೆಸ್ಟ್ ವರೆಗೆ ರ್ಯಾಂಕಿಂಗ್", kanglish: "{t} ranking: worst inda best varege" },
+    angle: "Rank 4 or 5 options for {t} with a one-line reason each; save the best for last.",
+    why: "Rankings make people wait for number one and argue in the comments.",
+    beats: [["Hook", "Worst → best: {t}", "I tried them all so you don't have to."], ["#4–#3", "#4 and #3", "Starting with the ones I wouldn't go back to."], ["#2", "#2", "This one was close."], ["#1", "#1", "And number one, easily."], ["Loop / CTA", "Agree?", "Would you change my number one? Comment yours."]] },
+  { id: "tutorial", title: "30-second tutorial", fit: { faceless: 1, face: .8, product: .9 }, s: [74, 88, 55, 30],
+    hook: { en: "{t} in 30 seconds", kn: "30 ಸೆಕೆಂಡ್‌ನಲ್ಲಿ {t}", kanglish: "30 seconds alli {t}" },
+    angle: "Teach {t} in three clear steps with one tip people usually miss.",
+    why: "Step-by-step help is saved to come back to, a strong ranking signal.",
+    beats: [["Hook", "{t} in 30 sec", "Here's the fastest way to do this."], ["Step 1", "Step 1", "Start with this."], ["Step 2", "Step 2", "Then this, and don't skip it."], ["Step 3 + tip", "Step 3 + the trick", "Last step, plus the trick most people miss."], ["Loop / CTA", "Save it", "Save this so you have it next time."]] },
+  { id: "gem", title: "Hidden gem", fit: { faceless: .9, face: .9, product: .6 }, s: [70, 72, 78, 40],
+    hook: { en: "Nobody talks about this {t}", kn: "ಯಾರೂ ಹೇಳದ {t} ಸೀಕ್ರೆಟ್", kanglish: "Yaaru helada {t} secret" },
+    angle: "Reveal one little-known spot, product or trick related to {t}.",
+    why: "Insider finds get sent to friends and saved for later.",
+    beats: [["Hook", "Nobody talks about this", "I can't believe more people don't know this."], ["Where / what", "What it is", "So here's what it is."], ["Why it's good", "Why it's worth it", "And here's why it's worth it."], ["Proof", "See for yourself", "Just look at this."], ["Loop / CTA", "Send to your plan buddy", "Send this to the person you'd go with."]] },
+  { id: "dayinlife", title: "Day in the life", fit: { faceless: .5, face: 1, product: .3 }, s: [68, 40, 58, 55],
+    hook: { en: "A day of {t} as a {a}", kn: "{a} ಆಗಿ {t} ಜೊತೆ ಒಂದು ದಿನ", kanglish: "{a} aagi {t} jothe ondu dina" },
+    angle: "Follow one real day built around {t}, cut to five quick moments.",
+    why: "Personal routines build trust and bring people back for the next one.",
+    beats: [["Hook", "A day of {t}", "Come with me for a full day of this."], ["Morning", "8 AM", "Starting the day like this."], ["Midday", "1 PM", "Halfway through, and here's the real part."], ["Evening", "7 PM", "End of the day, the best bit."], ["Loop / CTA", "Part 2?", "Want part two? Follow so you don't miss it."]] },
+  { id: "process", title: "Process reveal", fit: { faceless: .8, face: .3, product: 1 }, s: [86, 50, 55, 50],
+    hook: { en: "Watch this {t} come together", kn: "ಈ {t} ಹೇಗೆ ತಯಾರಾಗುತ್ತೆ ನೋಡಿ", kanglish: "Ee {t} hege ready aagutte nodi" },
+    angle: "Satisfying close-ups of {t} being made or set up, with crisp sound.",
+    why: "Satisfying process clips get rewatched, which counts for completion.",
+    beats: [["Hook", "Wait for it", "Start with the most satisfying second."], ["Raw", "Where it starts", "Every piece, from the start."], ["Build", "Coming together", "Now it starts to take shape."], ["Finish", "Done", "And here's the finished piece."], ["Loop / CTA", "Want one?", "Want one? Comment and I'll share the details."]] },
+  { id: "unbox", title: "Is it worth it?", fit: { faceless: .7, face: .8, product: 1 }, s: [78, 66, 60, 30],
+    hook: { en: "Is this {t} actually worth it?", kn: "ಈ {t} ನಿಜವಾಗ್ಲೂ ಬೆಲೆಗೆ ತಕ್ಕದ್ದಾ?", kanglish: "Ee {t} nijvaaglu worth aa?" },
+    angle: "Honest first impression of {t}: what's good, what's not, final verdict.",
+    why: "Buying decisions get saved and the verdict keeps people to the end.",
+    beats: [["Hook", "Worth it or not?", "Let's find out if this is actually worth it."], ["Unbox", "First look", "First look, straight out of the box."], ["The good", "What I liked", "Here's what surprised me."], ["The catch", "The catch", "But there's one thing you should know."], ["Loop / CTA", "Verdict", "My verdict, and would you buy it?"]] },
+  { id: "compare", title: "Expensive vs cheap", fit: { faceless: .8, face: .7, product: 1 }, s: [76, 80, 64, 45],
+    hook: { en: "{t} vs the cheaper version", kn: "{t} vs ಕಡಿಮೆ ಬೆಲೆಯದು: ಯಾವುದು ಬೆಸ್ಟ್?", kanglish: "{t} vs cheap version: yaavdu best?" },
+    angle: "Put {t} side by side with a cheaper option on 3 things that matter.",
+    why: "Comparisons help people decide, so they save and share them.",
+    beats: [["Hook", "Expensive vs cheap", "Is the expensive one really better?"], ["Test 1", "Round 1", "First test."], ["Test 2", "Round 2", "Second test, and this one surprised me."], ["Test 3", "Round 3", "Last test."], ["Loop / CTA", "Which would you pick?", "Which one would you pick? Comment A or B."]] }
+];
+const VISUALS = {
+  faceless: ["Fast cut of hands or b-roll matching the hook, bold text centered", "Top-down or screen recording that sets the context", "Close-up b-roll with a label", "The reveal shot, slightly slower", "Cut back to the first shot so it loops"],
+  face: ["Face to camera, tight frame, start mid-sentence", "Medium shot, you point to the on-screen text", "Cutaway b-roll while you keep talking", "Back to your face for the reaction", "Look at the lens, pause, then cut"],
+  product: ["Macro detail of the product, quick motion", "Product on a clean surface, hand enters frame", "Feature close-up with a label", "Product in use", "Hero shot with a slow push-in"]
+};
+const CAMERA = { faceless: "Top-down or 45°, phone on a stand, steady", face: "Eye level, arm's length, face toward a window", product: "45°, soft side light, plain backdrop" };
+const PROPS = {
+  faceless: ["Phone stand or overhead mount", "Clean surface or desk", "Voiceover recorded in a quiet room (blanket fort works)", "Screen recording turned on"],
+  face: ["Phone at eye level", "Window light or a ring light", "Clip-on mic or earphones mic", "Lines written on a sticky note"],
+  product: ["Plain backdrop (chart paper works)", "Soft side light", "Microfibre cloth for fingerprints", "Price tag or box for the reveal"]
+};
+const CTA = {
+  en: ["Save this for later.", "Send this to the friend who needs it.", "Follow for part 2."],
+  kn: ["ಆಮೇಲೆ ನೋಡೋಕೆ ಸೇವ್ ಮಾಡಿ.", "ಇದು ಬೇಕಿರೋ ಫ್ರೆಂಡ್‌ಗೆ ಕಳಿಸಿ.", "ಪಾರ್ಟ್ 2 ಗೆ ಫಾಲೋ ಮಾಡಿ."],
+  kanglish: ["Aamele nodoke save maadi.", "Idu bekiro friend ge kalsi.", "Part 2 ge follow maadi."]
+};
+const ASK = {
+  en: ["Which one would you try first?", "What did I miss? Drop yours below.", "Agree or disagree? Tell me why."],
+  kn: ["ನೀವು ಮೊದಲು ಯಾವುದನ್ನ ಟ್ರೈ ಮಾಡ್ತೀರಾ?", "ನಾನು ಏನು ಮಿಸ್ ಮಾಡಿದೆ? ಕಾಮೆಂಟ್ ಮಾಡಿ.", "ಒಪ್ಪುತ್ತೀರಾ? ಯಾಕೆ ಅಂತ ಹೇಳಿ."],
+  kanglish: ["Neevu modlu yaavdu try maadtira?", "Naanu enu miss maadide? Comment maadi.", "Oppthira? Yaake anta heli."]
+};
+const fill = (s, v) => String(s).replace(/\{t\}/g, v.t).replace(/\{a\}/g, v.a);
+
+function rankScore(sc, plat) {
+  const w = PLATFORMS[plat].weights, ease = 100 - clamp(sc.effort, 0, 100);
+  return Math.round(w.completion * clamp(sc.completion, 0, 100) + w.shares * clamp(sc.shares, 0, 100) + w.saves * clamp(sc.saves, 0, 100) + w.ease * ease);
+}
+function topSignal(sc, plat) {
+  const w = PLATFORMS[plat].weights;
+  const parts = { completion: w.completion * sc.completion, shares: w.shares * sc.shares, saves: w.saves * sc.saves, ease: w.ease * (100 - sc.effort) };
+  const k = Object.entries(parts).sort((a, b) => b[1] - a[1])[0][0];
+  const label = { completion: "completion", shares: "shares", saves: "saves", ease: "low effort" }[k];
+  return `${label} (${Math.round(w[k] * 100)}% of the ${PLATFORMS[plat].short} score)`;
+}
+function shortTopic(c) {
+  const raw = (c.topic || S.profile.niche || "your niche").trim().replace(/[.?!]+$/, "");
+  return raw.length > 48 ? raw.slice(0, 46).replace(/\s\S*$/, "") : raw;
+}
+function offlineIdeas(c, seed) {
+  const r = rng(seed ?? hash(c.topic + c.format + c.platform + c.goal + S.profile.niche));
+  const v = { t: shortTopic(c), a: (S.profile.audience || "creator").replace(/s$/, "") };
+  const goalAdj = { grow: [0, 0, 6, 0], saves: [0, 8, 0, 0], sell: [4, 4, 0, 0], trust: [4, 2, 0, -5] }[c.goal];
+  return ARCH.filter(a => a.fit[c.format] >= .5).map(a => {
+    const j = () => Math.round((r() - .5) * 14);
+    const scores = { completion: clamp(a.s[0] + goalAdj[0] + j(), 20, 98), saves: clamp(a.s[1] + goalAdj[1] + j(), 20, 98), shares: clamp(a.s[2] + goalAdj[2] + j(), 20, 98), effort: clamp(a.s[3] + goalAdj[3] + j() + (c.platform === "yt" ? 25 : 0), 5, 95) };
+    return { id: uid(), arch: a.id, title: fill(a.title, v), hook: fill(a.hook[c.lang] || a.hook.en, v), angle: fill(a.angle, v), length_sec: PLATFORMS[c.platform].len, scores, why: a.why, _k: rankScore(scores, c.platform) * (.8 + .2 * a.fit[c.format]) + r() * 4 };
+  }).sort((a, b) => b._k - a._k).slice(0, 5);
+}
+function frameTimes(L) {
+  const cuts = L > 120 ? [0, 30, L * .3, L * .6, L * .88, L] : [0, 3, L * .4, L * .65, L * .86, L];
+  return cuts.slice(0, 5).map((s, i) => `${fmtTime(s)}–${fmtTime(cuts[i + 1])}`);
+}
+function offlineBoard(c) {
+  const i = c.idea, a = ARCH.find(x => x.id === i.arch) || ARCH[0];
+  const v = { t: shortTopic(c), a: (S.profile.audience || "creator").replace(/s$/, "") };
+  const L = i.length_sec || PLATFORMS[c.platform].len, times = frameTimes(L);
+  const frames = a.beats.map((b, k) => ({ time: times[k], shot: b[0], visual: VISUALS[c.format][k], onscreen: k === 0 ? i.hook : fill(b[1], v), voiceover: k === 0 ? i.hook : fill(b[2], v), camera: CAMERA[c.format], ref: c.refCount ? k % c.refCount : null }));
+  const P = PLATFORMS[c.platform];
+  return {
+    style_notes: c.refCount ? `Frames follow your ${c.refCount} reference image${c.refCount > 1 ? "s" : ""}: keep the same framing, colour mood and light in every shot so the video looks like one piece.` : `${FORMATS[c.format]} look: ${CAMERA[c.format].toLowerCase()}. Burn captions in, since most people watch without sound.`,
+    frames,
+    shot_list: frames.map(f => `${f.shot}: ${f.visual.toLowerCase()}`).concat(["2–3 extra b-roll clips of 3 seconds each for cutaways", "10 seconds of room sound for smooth cuts"]),
+    props: PROPS[c.format],
+    roadmap: [
+      { day: "Day 1", task: "Lock the hook", detail: `Write 3 versions of "${i.hook}" and keep the one that works with the sound off.` },
+      { day: "Day 2", task: "Script it", detail: "Turn the 5 frames into lines you'd actually say. Read it out loud and cut anything you stumble on." },
+      { day: "Day 3", task: "Shoot", detail: `Shoot every item on the shot list in one session. ${CAMERA[c.format]}.` },
+      { day: "Day 4", task: "Edit", detail: `Cut dead air, add captions, keep it near ${L > 120 ? Math.round(L / 60) + " minutes" : L + " seconds"}. Check the first 3 seconds twice.` },
+      { day: "Day 5", task: "Post", detail: `Post on ${P.short} in the ${P.slots[0]} slot. Paste the post kit from Reelmap and pin the comment.` },
+      { day: "Day 6", task: "Engage", detail: "Reply to every comment in the first hour. Share to Stories or your community tab." },
+      { day: "Day 7", task: "Review", detail: "Check where viewers dropped off. Note what worked in your Library before planning the next one." }
+    ]
+  };
+}
+
+/* Transcript analysis for the offline post kit */
+const STOP = new Set("a an the and or but if so to of in on at for with from by is are was were be been am i me my we our you your he she it its they them their this that these those there here what which who whom how why when where all any both each few more most other some such no nor not only own same than too very can will just dont should now also get got go going went come came like really one two three four five first second last thing things then them okay ok yeah guys hey hi hello welcome back today video channel so um uh actually basically literally let lets gonna wanna know see look much many im ive its thats theres youre dont didnt cant wont isnt about into over under again out up down off still even every rupees rupee rs single near best honestly good next try tried went stop area which comment save list place day".split(" "));
+const NUMW = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+function countPhrase(text) {
+  for (const m of text.matchAll(/\b(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten)\s+((?:[a-z]+\s+)?[a-z]{3,}s)\b/gi)) {
+    if (/rupee|minute|second|hour|year|day|time/i.test(m[2])) continue;
+    return { n: String(NUMW[m[1].toLowerCase()] || m[1]), what: m[2].toLowerCase() };
+  }
+  return null;
+}
+function priceIn(text) { const m = text.match(/₹\s?(\d+)|(\d+)\s?(?:rupees|rs\b)/i); return m ? "₹" + (m[1] || m[2]) : ""; }
+function cleanTranscript(raw) {
+  return String(raw || "").replace(/^WEBVTT.*$/gm, "").replace(/^\d+\s*$/gm, "").replace(/^\s*[\d:.,]+\s*-->\s*[\d:.,]+.*$/gm, "").replace(/<[^>]+>/g, "").replace(/\n{2,}/g, "\n").replace(/[ \t]+/g, " ").trim();
+}
+function sentences(text) { return text.replace(/\n+/g, " ").split(/(?<=[.!?।])\s+/).map(s => s.trim()).filter(s => s.length > 2); }
+function keywords(text, n = 8) {
+  const words = text.toLowerCase().replace(/[^\p{L}\p{N}\s₹]/gu, " ").split(/\s+/).filter(w => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w));
+  const uni = new Map(), bi = new Map();
+  words.forEach((w, i) => { uni.set(w, (uni.get(w) || 0) + 1); if (i && words[i - 1] !== w) { const b = words[i - 1] + " " + w; bi.set(b, (bi.get(b) || 0) + 1); } });
+  const bis = [...bi].filter(([, c]) => c > 1).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b]) => b);
+  const unis = [...uni].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length).map(([w]) => w).filter(w => !bis.some(b => b.includes(w)));
+  return [...bis, ...unis].slice(0, n);
+}
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const toTag = s => "#" + String(s).split(/\s+/).map(w => cap(w.replace(/[^\p{L}\p{N}]/gu, ""))).join("");
+function hookCheck(first) {
+  const s = (first || "").trim(), w = s.split(/\s+/).filter(Boolean), issues = [];
+  let score = 30;
+  const greet = /^(hi|hey|hello|namaskara|welcome|so,? today|today i|in this video)\b/i.test(s);
+  if (greet) issues.push("It opens with a greeting. Viewers swipe before you reach the point."); else score += 25;
+  if (w.length && w.length <= 12) score += 20; else issues.push(`It's ${w.length} words. Aim for 12 or fewer so it fits on screen.`);
+  if (/\d|₹/.test(s)) score += 10; else issues.push("Add a number or price. Specifics stop the scroll.");
+  if (/\b(you|your|nimma|neevu)\b|ನೀವು|ನಿಮ್ಮ/i.test(s)) score += 8;
+  if (/\?|\b(why|secret|mistake|stop|never|nobody|worth|wrong|best|worst)\b/i.test(s)) score += 10; else issues.push("Open a loop: a question, a surprise or a stake.");
+  return { score: clamp(score, 5, 98), issues };
+}
+function betterHookFrom(kws, ctx) {
+  const text = cleanTranscript(ctx.transcript) + " " + (ctx.topic || "");
+  const k = kws[0] || shortTopic(ctx), cp = countPhrase(text), price = priceIn(text);
+  const what = cp ? `${cp.n} ${cp.what}` : k;
+  if (ctx.lang === "kn") return cp ? `${what}${price ? ", ಎಲ್ಲಾ " + price + " ಒಳಗೆ" : ""}. ಕೊನೆಯದು ಮಿಸ್ ಮಾಡ್ಬೇಡಿ` : `${k} ಬಗ್ಗೆ ಯಾರೂ ಹೇಳದ ವಿಷಯ`;
+  if (ctx.lang === "kanglish") return cp ? `${what}${price ? ", ella " + price + " olage" : ""}. Last du miss maadbedi` : `${k} bagge yaaru helada vishya`;
+  if (cp && price) return `${cap(what)}, all under ${price}. The last one's my favourite.`;
+  if (cp) return `${cap(what)} you need to know. Number ${cp.n} surprised me.`;
+  return `Nobody tells you this about ${k}.`;
+}
+function offlineKit(c) {
+  const text = cleanTranscript(c.transcript), sents = sentences(text), kws = keywords(text + " " + (c.topic || ""));
+  const P = PLATFORMS[c.platform], L = c.lang;
+  const k1 = kws[0] || shortTopic(c), k2 = kws[1] || S.profile.niche.split(/\s|&/)[0];
+  const cp = countPhrase(text + " " + (c.topic || "")), price = priceIn(text + " " + (c.topic || ""));
+  const nums = cp?.n;
+  const hc = hookCheck(sents[0]);
+  const greet = /^(hi|hey|hello|namaskara|welcome|what's up)\b/i;
+  const real = sents.filter(s => !greet.test(s)).map(s => s.replace(/^(so|okay|ok|alright|and),?\s+/i, "")).map(cap);
+  const dens = s => kws.filter(k => s.toLowerCase().includes(k)).length;
+  const lead = real[0] || sents[0] || "";
+  const support = real.slice(1).map((s, i) => [s, dens(s), i]).filter(x => x[0].length < 160).sort((x, y) => y[1] - x[1]).slice(0, 2).sort((x, y) => x[2] - y[2]).map(x => x[0]);
+  const body = [lead, ...support].filter(Boolean);
+  const ctas = CTA[L], asks = ASK[L];
+  const goalCta = c.voice === "expert" ? ctas[0] : c.voice === "witty" ? ctas[1] : ctas[hash(text) % 3];
+  const topicLine = c.topic ? cap(c.topic) : cp ? cap(`${cp.n} ${cp.what}${price ? " under " + price : ""}`) : cap(k1);
+  const voiceOpen = { friendly: "Okay, this one's for you.", witty: "Your wallet will thank me.", expert: "Here's what actually works.", calm: "A small one, but useful." }[c.voice];
+  const titles = L === "en" ? [
+    topicLine,
+    cp ? `${cap(cp.what)} worth your time${S.profile.location ? " in " + S.profile.location : ""}` : `The ${k1} guide I wish I had`,
+    `${cap(k1)}: what nobody tells you`
+  ] : L === "kn" ? [topicLine, `${k1}: ಯಾರೂ ಹೇಳದ ವಿಷಯ`, nums ? `${nums} ${cp.what}, ಎಲ್ಲಾ ಟ್ರೈ ಮಾಡಿದೆ` : `${k1} ಗೈಡ್, ಮೊದಲೇ ಗೊತ್ತಿರಬೇಕಿತ್ತು`]
+    : [topicLine, `${k1}: yaaru helada vishya`, nums ? `${nums} ${cp.what}, ella try maadide` : `${k1} guide, modle gottirbekittu`];
+  const capShort = [L === "en" ? voiceOpen : "", lead || topicLine, goalCta].filter(Boolean).join("\n");
+  const capStory = [titles[0] + (L === "en" ? "." : ""), "", ...(body.length ? body : sents.slice(0, 3)), "", asks[hash(text + "q") % 3], goalCta].join("\n").replace(/\n{3,}/g, "\n\n");
+  const loc = S.profile.location ? [S.profile.location] : [];
+  const nicheWords = S.profile.niche.split(/[&,]/).map(s => s.trim()).filter(Boolean);
+  let broad = [toTag(nicheWords[0] || k2)], niche = [toTag(k1), ...loc.map(l => toTag(l + " " + (nicheWords[0] || "").split(" ").pop()))], micro = kws.slice(1, 4).map(toTag);
+  if (L !== "en" && (c.platform === "ig" || c.platform === "yts")) broad.push("#Kannada");
+  if (c.platform === "yts") broad.push("#Shorts");
+  const all = [...new Set([...broad, ...niche, ...micro])];
+  const pick = []; for (const g of [broad, niche, micro, broad, niche, micro]) { const x = g.find(h => !pick.includes(h) && all.includes(h)); if (x && pick.length < P.tags) pick.push(x); }
+  const H = { broad: broad.filter(h => pick.includes(h)), niche: niche.filter(h => pick.includes(h)), micro: micro.filter(h => pick.includes(h)) };
+  return {
+    titles: titles.map(x => P.titleLimit ? x.slice(0, P.titleLimit) : x),
+    caption_short: capShort, caption_story: capStory, hashtags: H,
+    spoken_keywords: kws.slice(0, 5),
+    pinned_comment: asks[(hash(text) + 1) % 3],
+    thumbnail_text: L === "en" ? [cp && price ? `${cp.n} under ${price}` : `${cap(k1)} hack`, `Don't skip #${nums || 1}`, cap(cp ? cp.what : k1).split(" ").slice(0, 3).join(" ")] : L === "kn" ? [`${k1}?`, "ಮಿಸ್ ಮಾಡ್ಬೇಡಿ", `${nums || 3} ಟಿಪ್ಸ್`] : [`${k1}?`, "Miss maadbedi", `${nums || 3} tips`],
+    hook_score: hc.score, hook_feedback: hc.issues[0] || "Strong opening. It states the point straight away.", better_hook: betterHookFrom(kws, c), hook_issues: hc.issues,
+    alt_text: `Short video about ${k1}${S.profile.location ? " in " + S.profile.location : ""}, with on-screen captions.`,
+    first_hour: ["Reply to every comment within the first hour.", `Share it to your ${c.platform === "li" ? "network with a short note" : "Story with a poll sticker"}.`, "Pin the comment below so the conversation starts."]
+  };
+}
+
+/* ---------- Normalizers (AI output → safe shape) ---------- */
+const arr = x => Array.isArray(x) ? x : (x ? [x] : []);
+const str = x => typeof x === "string" ? x : (x == null ? "" : String(x));
+function normIdeas(j, c) {
+  const ideas = arr(j?.ideas).slice(0, 5).map(i => ({
+    id: uid(), arch: null, title: str(i.title) || "Untitled idea", hook: str(i.hook), angle: str(i.angle),
+    length_sec: clamp(i.length_sec || PLATFORMS[c.platform].len, 5, 1800),
+    scores: { completion: clamp(i.scores?.completion, 0, 100), saves: clamp(i.scores?.saves, 0, 100), shares: clamp(i.scores?.shares, 0, 100), effort: clamp(i.scores?.effort ?? 50, 0, 100) },
+    why: str(i.why)
+  })).filter(i => i.hook);
+  if (ideas.length < 3) throw { code: "invalid_json" };
+  return { ideas, refStyle: str(j.reference_style) };
+}
+function normBoard(j, c) {
+  const L = c.idea.length_sec || PLATFORMS[c.platform].len, times = frameTimes(L);
+  const frames = arr(j?.frames).slice(0, 6).map((f, k) => ({ time: str(f.time) || times[k] || "", shot: str(f.shot) || `Shot ${k + 1}`, visual: str(f.visual), onscreen: str(f.onscreen), voiceover: str(f.voiceover), camera: str(f.camera), ref: Number.isInteger(f.ref) && f.ref >= 0 && f.ref < c.refCount ? f.ref : (c.refCount ? k % c.refCount : null) }));
+  if (frames.length < 3) throw { code: "invalid_json" };
+  const road = arr(j.roadmap).slice(0, 7).map((d, k) => ({ day: str(d.day) || `Day ${k + 1}`, task: str(d.task), detail: str(d.detail) }));
+  return { style_notes: str(j.style_notes), frames, shot_list: arr(j.shot_list).map(str).filter(Boolean), props: arr(j.props).map(str).filter(Boolean), roadmap: road.length >= 5 ? road : offlineBoard(c).roadmap };
+}
+function normKit(j, c) {
+  if (!j || (!j.caption_short && !j.caption_story)) throw { code: "invalid_json" };
+  const tagify = a => arr(a).map(str).filter(Boolean).map(h => h.startsWith("#") ? h.replace(/\s+/g, "") : toTag(h));
+  const off = offlineKit(c);
+  return {
+    titles: arr(j.titles).map(str).filter(Boolean).slice(0, 3).concat(off.titles).slice(0, 3),
+    caption_short: str(j.caption_short) || off.caption_short, caption_story: str(j.caption_story) || off.caption_story,
+    hashtags: { broad: tagify(j.hashtags?.broad), niche: tagify(j.hashtags?.niche), micro: tagify(j.hashtags?.micro) },
+    spoken_keywords: arr(j.spoken_keywords).map(str).filter(Boolean).slice(0, 5),
+    pinned_comment: str(j.pinned_comment) || off.pinned_comment,
+    thumbnail_text: arr(j.thumbnail_text).map(str).filter(Boolean).slice(0, 3),
+    hook_score: clamp(j.hook_score ?? off.hook_score, 0, 100), hook_feedback: str(j.hook_feedback) || off.hook_feedback,
+    better_hook: str(j.better_hook) || off.better_hook, hook_issues: off.hook_issues,
+    alt_text: str(j.alt_text) || off.alt_text, first_hour: arr(j.first_hour).map(str).filter(Boolean).slice(0, 3)
+  };
+}
+
+/* ============================================================
+   PHASE 1 · PLAN
+   ============================================================ */
+function planCtx(extra = {}) {
+  return { topic: $("#pTopic").value.trim(), format: S.plan.format, platform: S.plan.platform, goal: S.plan.goal, lang: S.plan.lang, refCount: S.plan.refs.length, ...extra };
+}
+async function generateIdeas({ fresh = false } = {}) {
+  const c = planCtx(); S.plan.topic = c.topic;
+  const box = $("#planResults");
+  const busy = startBusy(box, `${t("thinking")} ${engineName(activeEngine())}`);
+  $("#pGo").disabled = true;
+  let used = activeEngine(), res;
+  try {
+    const j = await aiJSON(buildIdeasPrompt(c), { images: S.plan.refs.map(r => r.file), signal: busy.ctl.signal, onText: u => busy.progress(u.text), fresh });
+    const counter = { n: 0 }; res = normIdeas(humanizeDeep(j, counter), c);
+  } catch (err) {
+    if (err?.code === "cancelled" || err?.name === "AbortError") { busy.done(); $("#pGo").disabled = false; toast("Stopped."); return; }
+    const m = failMessage(err); if (m) toast(m, 5000);
+    used = "offline";
+    res = { ideas: offlineIdeas(c, fresh ? Date.now() : undefined), refStyle: "" };
+  }
+  busy.done(); $("#pGo").disabled = false;
+  res.ideas.forEach(i => i.total = rankScore(i.scores, c.platform));
+  res.ideas.sort((a, b) => b.total - a.total);
+  Object.assign(S.plan, { ideas: res.ideas, refStyle: res.refStyle, selected: -1, board: null, engine: used, example: false, ctx: c, showAll: false });
+  renderPlan();
+}
+async function buildBoard(idx, { fresh = false } = {}) {
+  const idea = S.plan.ideas[idx]; if (!idea) return;
+  S.plan.selected = idx; S.plan.board = null; renderPlan();
+  const c = { ...(S.plan.ctx || planCtx()), idea, refCount: S.plan.refs.length };
+  const slot = $("#boardSlot");
+  const busy = startBusy(slot, `Drawing the storyboard · ${engineName(activeEngine())}`);
+  slot.scrollIntoView({ behavior: "smooth", block: "start" });
+  let board, used = activeEngine();
+  try {
+    const j = await aiJSON(buildBoardPrompt(c), { images: S.plan.refs.map(r => r.file), signal: busy.ctl.signal, onText: u => busy.progress(u.text), fresh });
+    board = normBoard(humanizeDeep(j, { n: 0 }), c);
+  } catch (err) {
+    if (err?.code === "cancelled" || err?.name === "AbortError") { busy.done(); toast("Stopped."); return; }
+    const m = failMessage(err); if (m) toast(m, 5000);
+    used = "offline";
+    board = offlineBoard({ ...c, idea: { ...idea, arch: idea.arch || ARCH[hash(idea.title) % ARCH.length].id } });
+    if (!idea.arch) { board.frames[0].onscreen = idea.hook; board.frames[0].voiceover = idea.hook; }
+  }
+  busy.done();
+  S.plan.board = { ...board, engine: used };
+  renderPlan();
+  requestAnimationFrame(() => $("#board")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+function renderIdeasHead() {
+  const c = S.plan.ctx || planCtx();
+  return `<div class="res-head">
+    <div class="t">
+      <h2>${S.plan.ideas.length} ideas for ${esc(PLATFORMS[c.platform].name)}</h2>
+      <p class="small muted">${S.plan.example ? `<span class="badge example">${t("example")}</span> ` : ""}Best first. <button class="linkbtn" data-go="how">How scoring works</button></p>
+    </div>
+    ${ib("regen", t("regen"), 'data-act="regen"')}
+  </div>
+  ${S.plan.refStyle ? `<p class="small muted">Matched to your reference look: ${esc(S.plan.refStyle)}</p>` : ""}`;
+}
+function ideaCard(i, k) {
+  const c = S.plan.ctx || planCtx();
+  const bar = (lab, v) => `<dt>${lab}</dt><dd><i style="width:${v}%"></i></dd><span class="v">${v}</span>`;
+  return `<article class="idea${k === S.plan.selected ? " is-selected" : ""}" data-i="${k}">
+    <div class="rank" aria-label="Rank ${k + 1}">${k + 1}</div>
+    <div class="idea-main">
+      <h3>${esc(i.title)}</h3>
+      <p class="hook" lang="${c.lang === "kn" ? "kn" : "en"}">${esc(i.hook)}</p>
+    </div>
+    <div class="score" title="Estimated ${esc(PLATFORMS[c.platform].short)} score out of 100"><b>${i.total}</b><span>score</span></div>
+    <div class="idea-foot">
+      <button class="btn primary sm" data-act="board">${t("storyboard")}</button>
+      <button class="btn sm" data-act="handoff">${t("use")}</button>
+      <span class="grow"></span>
+      ${ib("save", t("save"), 'data-act="save-idea"')}${ib("listen", t("listen"), 'data-act="listen"')}${ib("copy", t("copy"), `data-c="${copyId(i.hook)}"`)}
+    </div>
+    <details class="why">
+      <summary>Why this idea</summary>
+      <div class="why-body">
+        <p>${esc(i.angle)}</p>
+        <p class="muted">${esc(i.why)} Strongest on ${esc(topSignal(i.scores, c.platform))}.</p>
+        <dl class="bars">${bar("Finish", i.scores.completion)}${bar("Shares", i.scores.shares)}${bar("Saves", i.scores.saves)}${bar("Ease", 100 - i.scores.effort)}</dl>
+        <p class="small muted mono">${esc(FORMATS[c.format])} · ~${i.length_sec > 120 ? Math.round(i.length_sec / 60) + " min" : i.length_sec + "s"}</p>
+      </div>
+    </details>
+  </article>`;
+}
+function boardHTML() {
+  const b = S.plan.board, i = S.plan.ideas[S.plan.selected]; if (!b || !i) return "";
+  const c = S.plan.ctx || planCtx(), tab = S.plan.boardTab || "shots";
+  const frames = b.frames.map((f, k) => {
+    const ref = f.ref != null && S.plan.refs[f.ref];
+    return `<div class="frame">
+      <div class="canvas${ref ? " has-img" : ""}" ${ref ? `style="background-image:url('${ref.url}')"` : ""} role="img" aria-label="Frame ${k + 1}: ${esc(f.visual)}">
+        <span class="tc">${String(k + 1).padStart(2, "0")} · ${esc(f.time)}</span>${k === 0 ? `<span class="rec" aria-hidden="true"></span>` : ""}
+        ${f.onscreen ? `<div class="ost">${esc(f.onscreen)}</div>` : ""}
+        <div class="safe b"></div><div class="safe r"></div>
+      </div>
+      <div class="frame-notes"><b>${esc(f.shot)}</b><p>${esc(f.visual)}</p>${f.voiceover ? `<p class="vo">“${esc(f.voiceover)}”</p>` : ""}</div>
+    </div>`;
+  }).join("");
+  const shotText = b.frames.map((f, k) => `${k + 1}. [${f.time}] ${f.shot}: ${f.visual}\n   On screen: ${f.onscreen}\n   VO: ${f.voiceover}\n   Camera: ${f.camera}`).join("\n");
+  const shots = `<ul class="checks">${b.shot_list.map((s, k) => `<li><label><input type="checkbox" id="shot${k}"><span>${esc(s)}</span></label></li>`).join("")}</ul>
+    ${b.props.length ? `<p class="small muted">Keep ready: ${esc(b.props.join(" · "))}</p>` : ""}
+    ${b.frames[0]?.camera ? `<p class="small muted">Camera: ${esc(b.frames[0].camera)}</p>` : ""}`;
+  const road = `<ol class="road">${b.roadmap.map(d => `<li><span class="d">${esc(d.day)}</span><div><b>${esc(d.task)}</b><span>${esc(d.detail)}</span></div></li>`).join("")}</ol>`;
+  return `<section class="card board" id="board">
+    <div class="board-head">
+      <div><span class="label">Storyboard</span><h2>${esc(i.title)}</h2>${S.plan.refs.length && b.style_notes ? `<p class="small muted">${esc(b.style_notes)}</p>` : ""}</div>
+      <div class="actions">${ib("copy", t("copy"), `data-c="${copyId(shotText)}"`)}${ib("save", t("save"), 'data-act="save-board"')}${ib("regen", t("regen"), 'data-act="board-regen"')}<button class="btn primary sm" data-act="handoff-board">${t("use")} →</button></div>
+    </div>
+    <div class="frames-wrap"><div class="frames" id="frames">${frames}</div></div>
+    <label class="small muted safe-key"><input type="checkbox" id="safeToggle" checked> Show where app buttons cover the screen</label>
+    <div class="board-tabs">
+      <div class="seg" role="tablist"><button data-btab="shots" aria-pressed="${tab === "shots"}">Shot list</button><button data-btab="road" aria-pressed="${tab === "road"}">7-day plan</button></div>
+      <div class="panel">${tab === "shots" ? shots : road}</div>
+    </div>
+  </section>`;
+}
+function renderPlan() {
+  const box = $("#planResults");
+  const keepBusy = S.busy && box.contains(S.busy.el) ? S.busy.el : null;
+  const shown = S.plan.showAll || S.plan.selected >= 3 ? S.plan.ideas : S.plan.ideas.slice(0, 3);
+  const rest = S.plan.ideas.length - shown.length;
+  box.innerHTML = renderIdeasHead() + `<div class="ideas">${shown.map(ideaCard).join("")}</div>` +
+    (rest > 0 ? `<button class="btn ghost showmore" data-act="more">Show ${rest} more idea${rest > 1 ? "s" : ""}</button>` : "") +
+    `<div id="boardSlot">${boardHTML()}</div>`;
+  if (keepBusy) box.prepend(keepBusy);
+  const st = $("#safeToggle"); if (st) st.onchange = () => $("#frames").classList.toggle("hide-safe", !st.checked);
+}
+$("#planResults").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.c) { copyText(COPY.get(b.dataset.c) || "", b); return; }
+  if (b.dataset.btab) { S.plan.boardTab = b.dataset.btab; renderPlan(); return; }
+  if (b.dataset.go) return;
+  const card = b.closest(".idea"), k = card ? +card.dataset.i : S.plan.selected, act = b.dataset.act;
+  if (act === "regen") generateIdeas({ fresh: true });
+  else if (act === "more") { S.plan.showAll = true; renderPlan(); }
+  else if (act === "board") buildBoard(k);
+  else if (act === "board-regen") buildBoard(S.plan.selected, { fresh: true });
+  else if (act === "listen") speak(S.plan.ideas[k].hook, (S.plan.ctx || planCtx()).lang === "kn" ? "kn" : "en");
+  else if (act === "save-idea" || act === "save-board") saveIdea(k);
+  else if (act === "handoff" || act === "handoff-board") handoff(k);
+});
+
+/* Reference images */
+function addRefs(files) {
+  const imgs = [...files].filter(f => /^image\/(png|jpe?g|webp)$/.test(f.type));
+  if (!imgs.length) { toast("Use PNG, JPG or WebP images."); return; }
+  for (const f of imgs) {
+    if (S.plan.refs.length >= 2) { toast("Two reference images is the limit."); break; }
+    if (f.size > 15e6) { toast(`${f.name} is over 15 MB.`); continue; }
+    S.plan.refs.push({ file: f, url: URL.createObjectURL(f), name: f.name });
+  }
+  renderThumbs();
+}
+function renderThumbs() {
+  try { updateMoreSums(); } catch {}
+  $("#pThumbs").innerHTML = S.plan.refs.map((r, k) => `<div class="thumb"><img src="${r.url}" alt="Reference ${k + 1}"><button type="button" data-k="${k}" aria-label="Remove reference ${k + 1}">×</button></div>`).join("");
+}
+$("#pThumbs").onclick = e => { const b = e.target.closest("button"); if (!b) return; const r = S.plan.refs.splice(+b.dataset.k, 1)[0]; URL.revokeObjectURL(r.url); renderThumbs(); };
+$("#pRefs").onchange = e => { addRefs(e.target.files); e.target.value = ""; };
+["dragenter", "dragover"].forEach(ev => $("#pDrop").addEventListener(ev, e => { e.preventDefault(); $("#pDrop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("#pDrop").addEventListener(ev, e => { e.preventDefault(); $("#pDrop").classList.remove("over"); }));
+$("#pDrop").addEventListener("drop", e => addRefs(e.dataTransfer.files));
+$("#planForm").addEventListener("paste", e => { const f = [...(e.clipboardData?.files || [])]; if (f.length) addRefs(f); });
+
+/* ---------- Plan → Publish handoff ---------- */
+function handoff(k) {
+  const i = S.plan.ideas[k]; if (!i) return;
+  const b = k === S.plan.selected ? S.plan.board : null;
+  const c = S.plan.ctx || planCtx();
+  const script = b ? b.frames.map(f => f.voiceover).filter(Boolean).join("\n") : `${i.hook}\n${i.angle}`;
+  S.pub.source = { title: i.title, hook: i.hook };
+  $("#uTranscript").value = script;
+  $("#uTopic").value = i.title;
+  S.pub.platforms = [c.platform]; S.pub.lang = c.lang;
+  setupPubControls(); updateWordCount(); renderPubSource();
+  switchView("publish");
+  toast("Script from your plan is loaded. Swap in your real transcript after filming.");
+}
+function renderPubSource() {
+  const s = S.pub.source;
+  $("#pubSource").innerHTML = s ? `<p class="source small">Script from your plan: <b>${esc(s.title)}</b>. Swap in your real words after filming. <button type="button" class="linkbtn" id="clearSource">Clear</button></p>` : "";
+  const cs = $("#clearSource"); if (cs) cs.onclick = () => { S.pub.source = null; renderPubSource(); };
+}
+
+/* ============================================================
+   PHASE 2 · PUBLISH
+   ============================================================ */
+function pubCtx(platform) {
+  return { transcript: $("#uTranscript").value.trim(), topic: $("#uTopic").value.trim(), platform, voice: S.pub.voice, lang: S.pub.lang, goal: S.plan.goal };
+}
+async function buildKits({ fresh = false } = {}) {
+  const transcript = $("#uTranscript").value.trim();
+  if (transcript.split(/\s+/).length < 8) { toast("Paste at least a couple of sentences of transcript first."); $("#uTranscript").focus(); return; }
+  const plats = [...S.pub.platforms];
+  const box = $("#pubResults");
+  Object.assign(S.pub, { kits: {}, active: plats[0], removed: 0, example: false, variant: {}, tagsOff: {} });
+  const busy = startBusy(box, `${t("thinking")} ${engineName(activeEngine())}`);
+  $("#uGo").disabled = true;
+  let stopped = false;
+  for (const p of plats) {
+    if (busy.ctl.signal.aborted) { stopped = true; break; }
+    busy.el.querySelector(".lbl").textContent = `Writing the ${PLATFORMS[p].short} kit · ${engineName(activeEngine())}`;
+    const c = pubCtx(p); let kit, used = activeEngine();
+    try {
+      const j = await aiJSON(buildKitPrompt(c), { signal: busy.ctl.signal, onText: u => busy.progress(u.text), fresh });
+      kit = normKit(j, c);
+    } catch (err) {
+      if (err?.code === "cancelled" || err?.name === "AbortError") { stopped = true; break; }
+      const m = failMessage(err); if (m) toast(m, 5000);
+      used = "offline"; kit = offlineKit(c);
+    }
+    const counter = { n: 0 };
+    kit = humanizeDeep(kit, counter); kit.engine = used; kit.removed = counter.n;
+    S.pub.kits[p] = kit; S.pub.removed += counter.n;
+    renderPub(); box.prepend(busy.el);
+  }
+  busy.done(); $("#uGo").disabled = false;
+  if (stopped) toast("Stopped. Kits finished so far are kept.");
+  renderPub();
+}
+function counterHTML(text, limit) {
+  if (!limit) return `<span class="counter">${[...text].length} chars</span>`;
+  const n = [...text].length;
+  return `<span class="counter${n > limit ? " over" : ""}">${n} / ${limit}</span>`;
+}
+function blkHead(label, text, { limit = 0, listen = true } = {}) {
+  return `<div class="blk-head"><span class="label">${esc(label)}</span><span class="r">${limit !== null ? counterHTML(text, limit) : ""}${listen ? `<button class="btn sm ghost" data-say="${copyId(text)}">${t("listen")}</button>` : ""}<button class="btn sm ghost" data-c="${copyId(text)}">${t("copy")}</button></span></div>`;
+}
+function selectedTags(p) {
+  const k = S.pub.kits[p], off = S.pub.tagsOff[p] || new Set();
+  return [...k.hashtags.broad, ...k.hashtags.niche, ...k.hashtags.micro].filter((h, i, a) => a.indexOf(h) === i && !off.has(h));
+}
+function captionFor(p) {
+  const k = S.pub.kits[p], v = S.pub.variant[p] || "short";
+  const capText = v === "short" ? k.caption_short : k.caption_story;
+  const tags = selectedTags(p).join(" ");
+  return p === "yt" || p === "yts" ? capText + (tags ? "\n\n" + tags : "") : capText + (tags ? "\n.\n" + tags : "");
+}
+function kitText(p) {
+  const k = S.pub.kits[p], P = PLATFORMS[p];
+  return [`${P.name.toUpperCase()}`, P.titleLimit ? `Title: ${k.titles[0]}` : `Cover line: ${k.titles[0]}`, "", "Caption:", captionFor(p), "",
+    `Pinned comment: ${k.pinned_comment}`, `Say these out loud: ${k.spoken_keywords.join(", ")}`, `Thumbnail text: ${k.thumbnail_text.join(" / ")}`,
+    `Alt text: ${k.alt_text}`, `Post: ${P.slots.join(" or ")} (starting point)`, `First hour: ${k.first_hour.join(" · ")}`].join("\n");
+}
+function kitMarkdown() {
+  const plats = Object.keys(S.pub.kits); const first = S.pub.kits[plats[0]];
+  return `# Post kit · ${$("#uTopic").value.trim() || first.titles[0]}\n\nMade with Reelmap on ${new Date().toLocaleDateString("en-IN")}\n\n## Hook check\nScore ${first.hook_score}/100. ${first.hook_feedback}\nStronger opening: ${first.better_hook}\n\n` +
+    plats.map(p => { const k = S.pub.kits[p], P = PLATFORMS[p];
+      return `## ${P.name}\n\n**Titles**\n${k.titles.map(x => `- ${x}`).join("\n")}\n\n**Caption (short)**\n\n${k.caption_short}\n\n**Caption (story)**\n\n${k.caption_story}\n\n**Hashtags:** ${selectedTags(p).join(" ")}\n\n**Pinned comment:** ${k.pinned_comment}\n\n**Say out loud:** ${k.spoken_keywords.join(", ")}\n\n**Thumbnail text:** ${k.thumbnail_text.join(" / ")}\n\n**Alt text:** ${k.alt_text}\n\n**When to post:** ${P.slots.join(" or ")} (starting point, check your own insights)\n\n**First hour**\n${k.first_hour.map(x => `- ${x}`).join("\n")}\n`; }).join("\n");
+}
+function renderPub() {
+  const box = $("#pubResults"), plats = Object.keys(S.pub.kits);
+  if (!plats.length) { box.innerHTML = `<div class="empty"><h3>Your post kit appears here</h3><p class="muted small">Paste what you say in the video and press Make post kit.</p></div>`; return; }
+  if (!S.pub.kits[S.pub.active]) S.pub.active = plats[0];
+  const first = S.pub.kits[plats[0]], lang = S.pub.lang === "kn" ? "kn" : "en";
+  const hc = first.hook_score, col = hc >= 70 ? "var(--good)" : hc >= 45 ? "var(--warn)" : "var(--bad)";
+  const verdict = hc >= 70 ? "Strong opening" : hc >= 45 ? "Opening could be stronger" : "Weak opening";
+  const p = S.pub.active, k = S.pub.kits[p], P = PLATFORMS[p], v = S.pub.variant[p] || "short";
+  const off = S.pub.tagsOff[p] || new Set();
+  const tagBtns = ["broad", "niche", "micro"].flatMap(g => k.hashtags[g].map(h => `<button class="tag" data-tag="${esc(h)}" aria-pressed="${!off.has(h)}" title="${g} · tap to ${off.has(h) ? "add" : "drop"}">${esc(h)}</button>`)).join("");
+  const capText = captionFor(p), capBody = v === "short" ? k.caption_short : k.caption_story;
+  const extra = (label, text, body) => `<div class="blk"><div class="blk-head"><span class="label">${label}</span>${text ? ib("copy", t("copy"), `data-c="${copyId(text)}"`) : ""}</div>${body}</div>`;
+  box.innerHTML = `
+  <div class="res-head"><div class="t">
+    <h2>Your post kit</h2>
+    <p class="small muted">${S.pub.example ? `<span class="badge example">${t("example")}</span> ` : ""}Ready to paste. Tap a hashtag to drop it.</p>
+  </div>
+  <div class="actions"><button class="btn primary sm" data-act="copy-all">${t("copyAll")}</button>${ib("download", t("download"), 'data-act="download"')}${ib("save", t("save"), 'data-act="save-kit"')}${ib("regen", t("regen"), 'data-act="regen-kit"')}</div></div>
+
+  <section class="card hookcard">
+    <div class="ring" style="--v:${hc};--c:${col}"><b>${hc}</b></div>
+    <div style="min-width:0;display:flex;flex-direction:column;gap:4px">
+      <span class="label">${verdict}</span>
+      <p>Try starting with: <b lang="${lang}">${esc(first.better_hook)}</b> ${ib("copy", t("copy"), `data-c="${copyId(first.better_hook)}"`)}</p>
+      <details class="why"><summary>Why</summary><div class="why-body"><p>${esc(first.hook_feedback)}</p>${first.hook_issues && first.hook_issues.length > 1 ? `<ul>${first.hook_issues.slice(1).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div></details>
+    </div>
+  </section>
+
+  <section class="card kit">
+    ${plats.length > 1 ? `<div class="kit-tabs" role="tablist">${plats.map(x => `<button class="kit-tab" role="tab" data-plat="${x}" aria-selected="${x === p}">${esc(PLATFORMS[x].name)}</button>`).join("")}</div>` : `<div class="kit-tabs"><span class="kit-tab" aria-selected="true">${esc(P.name)}</span></div>`}
+    <div class="kit-body" lang="${lang}">
+      <div class="blk">
+        <div class="blk-head"><span class="label">${P.titleLimit ? "Title" : "Cover line"}</span><span class="r">${counterHTML(k.titles[0], P.titleLimit || 0)}${ib("copy", t("copy"), `data-c="${copyId(k.titles[0])}"`)}</span></div>
+        <p class="title-main">${esc(k.titles[0])}</p>
+        ${k.titles.length > 1 ? `<details class="why"><summary>${k.titles.length - 1} more option${k.titles.length > 2 ? "s" : ""}</summary><div class="why-body">${k.titles.slice(1).map(x => `<div class="opt"><span>${esc(x)}</span>${ib("copy", t("copy"), `data-c="${copyId(x)}"`)}</div>`).join("")}</div></details>` : ""}
+      </div>
+      <div class="blk">
+        <div class="blk-head"><span class="seg" role="group" aria-label="Caption length"><button data-var="short" aria-pressed="${v === "short"}">Short</button><button data-var="story" aria-pressed="${v === "story"}">Story</button></span>
+          <span class="r">${counterHTML(capText, P.capLimit)}${ib("listen", t("listen"), `data-say="${copyId(capBody)}"`)}<button class="btn sm primary" data-c="${copyId(capText)}">${t("copy")}</button></span></div>
+        <div class="blk-text">${esc(capText)}</div>
+      </div>
+      <div class="blk"><div class="blk-head"><span class="label">Hashtags</span>${ib("copy", t("copy"), `data-c="${copyId(selectedTags(p).join(" "))}"`)}</div><div class="tags">${tagBtns}</div></div>
+      <details class="more kit-more">
+        <summary>More for this post <span class="sum">pinned comment, timing, thumbnail, alt text</span></summary>
+        <div class="kit-grid">
+          ${extra("Pinned comment", k.pinned_comment, `<div class="blk-text">${esc(k.pinned_comment)}</div>`)}
+          ${extra("When to post", "", `${P.slots.map(s => `<div class="mono small">${esc(s)}</div>`).join("")}<p class="small muted">A starting point. Your own Insights win after a few weeks.</p>`)}
+          ${extra("Say these out loud", k.spoken_keywords.join(", "), `<div class="chips">${k.spoken_keywords.map(x => `<span class="chip static">${esc(x)}</span>`).join("")}</div><p class="small muted">In the first 10 seconds. Platforms search your speech.</p>`)}
+          ${extra("Thumbnail text", k.thumbnail_text.join(" / "), k.thumbnail_text.map(x => `<div>${esc(x)}</div>`).join(""))}
+          ${extra("First hour after posting", "", `<ul class="checks">${k.first_hour.map((x, i) => `<li><label><input type="checkbox" id="fh-${p}-${i}"><span>${esc(x)}</span></label></li>`).join("")}</ul>`)}
+          ${extra("Alt text", k.alt_text, `<div class="small">${esc(k.alt_text)}</div>`)}
+        </div>
+      </details>
+      <p class="human"><b>✓</b> ${k.removed ? `Cleaned up ${k.removed} robotic phrase${k.removed > 1 ? "s" : ""}` : "Sounds human: no robotic phrasing found"}</p>
+    </div>
+  </section>`;
+}
+$("#pubResults").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.c) { copyText(COPY.get(b.dataset.c) || "", b); return; }
+  if (b.dataset.say) { speak(COPY.get(b.dataset.say) || "", S.pub.lang === "kn" ? "kn" : "en"); return; }
+  if (b.dataset.plat) { S.pub.active = b.dataset.plat; renderPub(); return; }
+  if (b.dataset.var) { S.pub.variant[S.pub.active] = b.dataset.var; renderPub(); return; }
+  if (b.dataset.tag) { const s = S.pub.tagsOff[S.pub.active] ||= new Set(); s.has(b.dataset.tag) ? s.delete(b.dataset.tag) : s.add(b.dataset.tag); renderPub(); return; }
+  const act = b.dataset.act;
+  if (act === "copy-all") copyText(Object.keys(S.pub.kits).map(kitText).join("\n\n————\n\n"), b);
+  else if (act === "download") saveFile(`reelmap-post-kit-${new Date().toISOString().slice(0, 10)}.md`, kitMarkdown());
+  else if (act === "save-kit") saveKit();
+  else if (act === "regen-kit") buildKits({ fresh: true });
+});
+
+async function saveFile(filename, data) {
+  const d = S.engine.downloads;
+  if (d) {
+    try { await d.save({ filename, data }); toast("Saved."); return; }
+    catch (err) { if (err?.code === "declined") return; if (err?.code !== "unavailable") { toast("Couldn't save the file here. Use Copy all instead."); return; } }
+  }
+  if (!window.claude) { // served by the local server: normal download works
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "text/plain" })); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000); return;
+  }
+  copyText(data); toast("Downloads aren't available here, so the kit was copied to your clipboard.");
+}
+
+/* Transcript upload */
+function updateWordCount() { const n = $("#uTranscript").value.trim().split(/\s+/).filter(Boolean).length; $("#uWords").textContent = `${n} words`; }
+$("#uTranscript").addEventListener("input", updateWordCount);
+function updateUploadHint() {
+  const can = (activeEngine() === "local" || activeEngine() === "gemini") && S.engine.local?.whisper;
+  $("#uDropText").textContent = can ? "or upload audio, video or a captions file" : "or upload a captions file (.srt, .vtt, .txt)";
+}
+async function handleTranscriptFile(f) {
+  if (!f) return;
+  if (/\.(txt|srt|vtt)$/i.test(f.name) || f.type.startsWith("text/")) {
+    $("#uTranscript").value = cleanTranscript(await f.text()); updateWordCount(); toast(`Loaded ${f.name}.`); return;
+  }
+  if (/^(audio|video)\//.test(f.type)) {
+    if (!((activeEngine() === "local" || activeEngine() === "gemini") && S.engine.local?.whisper)) { toast("Audio and video transcription runs on the local Reelmap server with Whisper. Here, paste the transcript or upload .srt / .vtt captions.", 6500); return; }
+    const box = $("#pubResults"), busy = startBusy(box, `Transcribing ${f.name} with Whisper`);
+    try {
+      const fd = new FormData(); fd.append("file", f); if (S.pub.lang === "kn") fd.append("language", "kn");
+      const r = await fetch("/api/transcribe", { method: "POST", body: fd, signal: busy.ctl.signal });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `Server error ${r.status}`);
+      const j = await r.json(); $("#uTranscript").value = j.text.trim(); updateWordCount();
+      toast(`Transcribed ${Math.round(j.duration || 0)}s of audio (${j.language || "auto"}).`);
+    } catch (err) { if (err.name !== "AbortError") toast("Transcription failed: " + err.message, 6000); }
+    busy.done(); return;
+  }
+  toast("That file type isn't supported. Use .txt, .srt, .vtt, audio or video.");
+}
+$("#uFile").onchange = e => { handleTranscriptFile(e.target.files[0]); e.target.value = ""; };
+["dragenter", "dragover"].forEach(ev => $("#uTranscript").addEventListener(ev, e => { e.preventDefault(); $("#uDrop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("#uTranscript").addEventListener(ev, e => { e.preventDefault(); $("#uDrop").classList.remove("over"); }));
+$("#uTranscript").addEventListener("drop", e => handleTranscriptFile(e.dataTransfer.files[0]));
+
+/* ============================================================
+   LIBRARY
+   ============================================================ */
+function saveIdea(k) {
+  const i = S.plan.ideas[k]; if (!i) return;
+  const c = S.plan.ctx || planCtx();
+  const board = k === S.plan.selected ? S.plan.board : null;
+  const ex = S.library.find(x => x.type === "idea" && x.data.idea.id === i.id);
+  if (ex) { if (board) ex.data.board = board; ex.stage = board && ex.stage === "Idea" ? "Scripted" : ex.stage; }
+  else S.library.unshift({ id: uid(), type: "idea", title: i.title, platform: c.platform, stage: board ? "Scripted" : "Idea", created: Date.now(), data: { idea: i, board, ctx: { ...c, refCount: 0 } } });
+  persist(); renderLibCount(); toast(t("saved"));
+}
+function saveKit() {
+  const plats = Object.keys(S.pub.kits); if (!plats.length) return;
+  const title = $("#uTopic").value.trim() || S.pub.kits[plats[0]].titles[0];
+  S.library.unshift({ id: uid(), type: "kit", title, platform: plats.join(","), stage: "Filmed", created: Date.now(),
+    data: { kits: S.pub.kits, transcript: $("#uTranscript").value, topic: $("#uTopic").value, lang: S.pub.lang, voice: S.pub.voice } });
+  persist(); renderLibCount(); toast(t("saved"));
+}
+function renderLibCount() { const c = $("#libCount"); c.textContent = S.library.length; c.hidden = !S.library.length; }
+function renderLibrary() {
+  const f = S.libFilter;
+  chips($("#libFilter"), Object.fromEntries(["All", ...STAGES].map(s => [s, s === "All" ? `All ${S.library.length}` : `${s} ${S.library.filter(x => x.stage === s).length}`])), f, { onChange: v => { S.libFilter = v; renderLibrary(); } });
+  const items = S.library.filter(x => f === "All" || x.stage === f);
+  $("#libList").innerHTML = items.length ? items.map(x => `<div class="row" data-id="${x.id}">
+      <span class="type">${x.type === "idea" ? (x.data.board ? "Storyboard" : "Idea") : "Post kit"}</span>
+      <div class="ti"><b>${esc(x.title)}</b><span class="small muted">${esc(x.platform.split(",").map(p => PLATFORMS[p]?.short || p).join(" · "))} · ${new Date(x.created).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span></div>
+      <select class="stage" aria-label="Stage" id="stage-${x.id}">${STAGES.map(s => `<option${s === x.stage ? " selected" : ""}>${s}</option>`).join("")}</select>
+      <div class="actions"><button class="btn sm" data-act="open">Open</button><button class="btn sm ghost" data-act="del">Remove</button></div>
+    </div>`).join("")
+    : `<div class="empty"><h3>${S.library.length ? "Nothing at this stage yet" : "Your saved ideas and post kits live here"}</h3><p class="small muted" style="max-width:46ch">Press Save on an idea, a storyboard or a post kit. Move each one from Idea to Scripted, Filmed and Posted as you go. Saved on this device only.</p><button class="btn primary sm" data-act="go-plan">Plan an idea</button></div>`;
+}
+$("#libList").addEventListener("change", e => {
+  const sel = e.target.closest("select.stage"); if (!sel) return;
+  const x = S.library.find(i => i.id === sel.closest(".row").dataset.id); if (!x) return;
+  x.stage = sel.value; persist(); renderLibrary();
+});
+$("#libList").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.act === "go-plan") { switchView("plan"); return; }
+  const row = b.closest(".row"), x = S.library.find(i => i.id === row?.dataset.id); if (!x) return;
+  if (b.dataset.act === "del") {
+    if (b.dataset.confirm) { S.library = S.library.filter(i => i !== x); persist(); renderLibCount(); renderLibrary(); toast("Removed."); }
+    else { b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; b.classList.remove("ghost"); setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; b.textContent = "Remove"; b.classList.add("ghost"); } }, 3000); }
+  } else if (b.dataset.act === "open") {
+    if (x.type === "idea") {
+      const c = x.data.ctx; Object.assign(S.plan, { format: c.format, platform: c.platform, goal: c.goal, lang: c.lang, ctx: c, ideas: [x.data.idea], selected: x.data.board ? 0 : -1, board: x.data.board, example: false, engine: x.data.board?.engine || "offline" });
+      $("#pTopic").value = c.topic || ""; setupPlanControls(); renderPlan(); switchView("plan");
+    } else {
+      Object.assign(S.pub, { kits: x.data.kits, active: Object.keys(x.data.kits)[0], example: false, lang: x.data.lang, voice: x.data.voice, platforms: Object.keys(x.data.kits), variant: {}, tagsOff: {} });
+      $("#uTranscript").value = x.data.transcript; $("#uTopic").value = x.data.topic || ""; updateWordCount(); setupPubControls(); renderPub(); switchView("publish");
+    }
+  }
+});
+$("#libExport").onclick = () => {
+  if (!S.library.length) { toast("Nothing saved yet."); return; }
+  const md = "# Reelmap library\n\n" + S.library.map(x => `## ${x.title}\n- Type: ${x.type}\n- Stage: ${x.stage}\n- Platform: ${x.platform}\n` +
+    (x.type === "idea" ? `- Hook: ${x.data.idea.hook}\n- Angle: ${x.data.idea.angle}\n` + (x.data.board ? x.data.board.frames.map((f, k) => `  ${k + 1}. [${f.time}] ${f.onscreen} / VO: ${f.voiceover}`).join("\n") + "\n" : "")
+      : Object.entries(x.data.kits).map(([p, k]) => `- ${PLATFORMS[p].name}: ${k.titles[0]}\n\n${k.caption_short}\n`).join("\n"))).join("\n");
+  saveFile("reelmap-library.md", md);
+};
+
+/* ============================================================
+   HOW IT WORKS
+   ============================================================ */
+function renderHow() {
+  const exIdeas = { topic: "cheap breakfast spots near college", format: "faceless", platform: "ig", goal: "grow", lang: "en", refCount: 0 };
+  const exIdea = (S.plan.ideas[0]) || offlineIdeas(exIdeas)[0];
+  const exKit = { transcript: "So today I tried five breakfast places near Jayanagar, all under 80 rupees…", topic: "5 breakfasts under ₹80", platform: "ig", voice: "friendly", lang: "en" };
+  const local = S.engine.local;
+  $("#howBody").innerHTML = `
+  <section class="card wide">
+    <span class="label">The flow</span><h2>From a blank mind to a posted video</h2>
+    <ol class="flow" style="margin:0;padding:0">
+      <li><b>Profile</b><span class="muted">Niche, audience and language, set once.</span></li>
+      <li><b>Idea engine</b><span class="muted">An LLM proposes 5 ideas in different structures.</span></li>
+      <li><b>Ranker</b><span class="muted">Scores are weighted by what each platform rewards.</span></li>
+      <li><b>Storyboard</b><span class="muted">9:16 frames, shot list, 7-day roadmap. Reads your reference images.</span></li>
+      <li><b>Post kit</b><span class="muted">Titles, captions, hashtags, pinned comment, timing, hook check.</span></li>
+      <li><b>Humanizer</b><span class="muted">Strips stock AI phrases and em dashes before you see anything.</span></li>
+    </ol>
+  </section>
+  <section class="card">
+    <span class="label">Engines</span><h3>Four ways to run, picked automatically</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>Engine</th><th>When</th><th>Status here</th></tr></thead><tbody>
+      <tr><td><b>Gemini</b><br><span class="small muted">Google Gemini API via server.py</span></td><td>You run <span class="mono">server.py</span> with <span class="mono">GEMINI_API_KEY</span></td><td>${geminiReady() ? `<span style="color:var(--good)">Ready · ${esc(local?.gemini_model || "Gemini")}</span>` : "Not configured (set GEMINI_API_KEY)"}</td></tr>
+      <tr><td><b>Local open-source</b><br><span class="small muted">Ollama (Gemma 3 / Llama 3) + Whisper</span></td><td>You run <span class="mono">python server.py</span> and open localhost:8000</td><td>${localReady() ? `<span style="color:var(--good)">Running · ${esc(local?.model || "")}</span>` : local ? `<span style="color:var(--warn)">${esc(S.engine.localErr)}</span>` : "Not running here"}</td></tr>
+      <tr><td><b>Claude</b></td><td>The shared link, so reviewers get real AI without installing anything</td><td>${claudeReady() ? `<span style="color:var(--good)">Available</span>` : "Not available in this view"}</td></tr>
+      <tr><td><b>Offline templates</b></td><td>No AI reachable. Rules and templates, instant and stage-safe</td><td><span style="color:var(--good)">Always on</span></td></tr>
+    </tbody></table></div>
+    <p class="small muted">All AI engines get the exact same prompts and the same JSON schema, so results are comparable.</p>
+  </section>
+  <section class="card">
+    <span class="label">Ranking</span><h3>Estimated platform weights</h3>
+    <div class="tbl-wrap"><table><thead><tr><th>Platform</th><th>Finish</th><th>Shares</th><th>Saves</th><th>Ease</th></tr></thead><tbody>
+      ${Object.values(PLATFORMS).map(P => `<tr><td>${esc(P.name)}</td>${["completion", "shares", "saves", "ease"].map(k => `<td class="n">${Math.round(P.weights[k] * 100)}%</td>`).join("")}</tr>`).join("")}
+    </tbody></table></div>
+    <p class="small muted">Our own estimates built from public 2026 research on each algorithm (watch time, DM sends and saves on Reels; completion and rewatches on Shorts; dwell and saves on LinkedIn). Not official figures. Score = Σ weight × signal, with Ease = 100 − effort.</p>
+  </section>
+  <section class="card">
+    <span class="label">Open-source stack</span><h3>What runs where</h3>
+    <div class="tbl-wrap"><table><tbody>
+      <tr><td><b>Ideas, storyboards, captions</b></td><td>Gemma 3 or Llama 3.1 via Ollama, JSON mode</td></tr>
+      <tr><td><b>Reference image reading</b></td><td>Gemma 3 vision (or LLaVA) via Ollama</td></tr>
+      <tr><td><b>Transcripts</b></td><td>faster-whisper (Whisper small / large-v3), Kannada supported</td></tr>
+      <tr><td><b>Keywords (offline)</b></td><td>Frequency + bigram scoring with stop-words, KeyBERT-style</td></tr>
+      <tr><td><b>Server</b></td><td>FastAPI + Uvicorn, one file</td></tr>
+      <tr><td><b>Read-aloud</b></td><td>Browser speech synthesis (kn-IN / en-IN voices)</td></tr>
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <span class="label">Humanizer</span><h3>Phrases removed from every output</h3>
+    <div class="chips">${["em dashes (—)", "let's dive in", "delve into", "game-changer", "unlock the secrets", "elevate", "seamless", "in today's world", "harness the power", "testament to", "tapestry", "embark on", "it's worth noting", "in conclusion", "cutting-edge", "revolutionize", "buckle up", "without further ado"].map(x => `<span class="chip static">${esc(x)}</span>`).join("")}</div>
+    <p class="small muted">The prompts forbid them too. The filter is a second line of defence for smaller local models.</p>
+  </section>
+  <section class="card wide">
+    <span class="label">Prompt design</span><h3>The exact prompts sent to the model</h3>
+    <p class="small muted">Each prompt has a role, the creator's profile, platform knowledge, hard writing rules, a language rule and a strict JSON schema. Structured output lets the interface render, rank and validate every answer.</p>
+    <details open><summary>1 · Idea prompt</summary><pre class="prompt">${esc(buildIdeasPrompt(exIdeas))}</pre></details>
+    <details><summary>2 · Storyboard prompt</summary><pre class="prompt">${esc(buildBoardPrompt({ ...exIdeas, idea: exIdea }))}</pre></details>
+    <details><summary>3 · Post kit prompt</summary><pre class="prompt">${esc(buildKitPrompt(exKit))}</pre></details>
+  </section>`;
+}
+
+/* ============================================================
+   REVIEWS (shared via the page's database when available)
+   ============================================================ */
+const RATE = [["ease", "Easy to use"], ["useful", "Ideas were useful"], ["design", "Looks clean and trustworthy"], ["ai", "Captions sounded human"]];
+const R = { ratings: {}, use: "", db: null, user: null, myId: null, owner: false, unsub: null };
+function renderRatings() {
+  $("#revRatings").innerHTML = RATE.map(([k, lab]) => `<div class="rate-row"><span style="font-weight:600;font-size:.9rem">${lab}</span><div class="stars" role="group" aria-label="${lab}" data-k="${k}">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" aria-pressed="${R.ratings[k] === n}" aria-label="${n} of 5">${n}</button>`).join("")}</div></div>`).join("");
+}
+$("#revRatings").onclick = e => { const b = e.target.closest("button"); if (!b) return; R.ratings[b.parentElement.dataset.k] = +b.dataset.n; renderRatings(); };
+function reviewData() {
+  return { ratings: { ...R.ratings }, best: $("#rBest").value.trim(), confusing: $("#rConfusing").value.trim(), wouldUse: R.use, role: $("#rRole").value, name: $("#rName").value.trim(), engine: activeEngine(), updatedAt: Date.now() };
+}
+function reviewText(d) {
+  return `Reelmap review\n${RATE.map(([k, l]) => `${l}: ${d.ratings[k] || "-"}/5`).join("\n")}\nWould use: ${d.wouldUse || "-"}\nMost useful: ${d.best || "-"}\nConfusing: ${d.confusing || "-"}\nRole: ${d.role}${d.name ? `\nFrom: ${d.name}` : ""}`;
+}
+$("#revForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const d = reviewData();
+  if (Object.keys(d.ratings).length < RATE.length) { toast("Rate all four lines first."); return; }
+  if (!R.db || !R.myId) { copyText(reviewText(d)); $("#revNote").textContent = "Reviews can't be saved from this view, so your review was copied. Paste it to the person who sent you the link."; return; }
+  $("#rSubmit").disabled = true;
+  try { await R.db.doc("feedback/" + R.myId).set(d); $("#revNote").textContent = "Thanks! Your review was sent. You can update it any time from this page."; toast("Review sent."); }
+  catch (err) {
+    copyText(reviewText(d));
+    $("#revNote").textContent = err?.code === "quota_exceeded" ? "The review box is full, so your review was copied instead. Paste it to the person who sent you the link." : "This link lets you view but not save reviews, so your review was copied. Paste it to the person who sent you the link.";
+  }
+  $("#rSubmit").disabled = false;
+});
+$("#rCopy").onclick = e => copyText(reviewText(reviewData()), e.currentTarget);
+async function initReviews() {
+  const c = window.claude; if (!c?.use) return;
+  const [db, user] = await Promise.all([c.use("db").catch(() => null), c.use("user").catch(() => null)]);
+  R.db = db; R.user = user;
+  if (!db || !user) return;
+  try { R.myId = await user.id(); } catch {}
+  try { R.owner = await user.isOwner(); } catch {}
+  if (R.myId) {
+    try { const s = await db.doc("feedback/" + R.myId).get(); if (s.exists) { const d = s.data(); R.ratings = { ...(d.ratings || {}) }; R.use = d.wouldUse || ""; $("#rBest").value = d.best || ""; $("#rConfusing").value = d.confusing || ""; $("#rName").value = d.name || ""; if (d.role) $("#rRole").value = d.role; renderRatings(); setupUseChips(); $("#revNote").textContent = "You've already sent a review. Sending again updates it."; } } catch {}
+  }
+  if (R.owner) {
+    R.unsub = db.collection("feedback").onSnapshot(snap => renderOwner(snap.docs.map(d => d.data()).filter(Boolean)), () => {});
+  } else {
+    $("#revOwnerBody").innerHTML = `<p class="muted">Thanks for testing. Only the person who shared this page sees everyone's reviews.</p>`;
+  }
+}
+function renderOwner(list) {
+  if (!list.length) { $("#revOwnerBody").innerHTML = `<p class="muted">No reviews yet. Share this page with reviewers as Contributors so their reviews save here. Viewers can still copy their review as text and send it to you.</p>`; return; }
+  list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const avg = k => { const v = list.map(r => r.ratings?.[k]).filter(Number.isFinite); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "–"; };
+  const yes = list.filter(r => r.wouldUse === "Yes").length;
+  const csv = "updated,role,name,ease,useful,design,ai,would_use,best,confusing\n" + list.map(r => [new Date(r.updatedAt || 0).toISOString(), r.role, r.name, r.ratings?.ease, r.ratings?.useful, r.ratings?.design, r.ratings?.ai, r.wouldUse, r.best, r.confusing].map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  $("#revOwnerBody").innerHTML = `<p><b>${list.length}</b> review${list.length > 1 ? "s" : ""} · <b>${yes}</b> would use it</p>
+    <div class="avg">${RATE.map(([k, l]) => `<div><b>${avg(k)}</b><span class="small muted">${l}</span></div>`).join("")}</div>
+    <div class="actions"><button class="btn sm" id="revCsv">${t("download")} .csv</button></div>
+    ${list.map(r => `<div class="review"><div class="actions"><b>${esc(r.name || "Anonymous")}</b><span class="small muted">${esc(r.role || "")} · ${new Date(r.updatedAt || 0).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · would use: ${esc(r.wouldUse || "–")}</span></div><span class="mono small muted">${RATE.map(([k]) => r.ratings?.[k] ?? "–").join(" · ")}</span>${r.best ? `<p><b>Useful:</b> ${esc(r.best)}</p>` : ""}${r.confusing ? `<p><b>Confusing:</b> ${esc(r.confusing)}</p>` : ""}</div>`).join("")}`;
+  $("#revCsv").onclick = () => saveFile("reelmap-reviews.csv", csv);
+}
+function setupUseChips() { chips($("#rUse"), { Yes: "Yes", Maybe: "Maybe", No: "No" }, R.use, { onChange: v => R.use = v }); }
+
+/* ============================================================
+   PROFILE + ENGINE SHEETS
+   ============================================================ */
+function renderProfileStrip() {
+  const p = S.profile;
+  $("#profileWho").innerHTML = `<b>${esc(p.niche)}</b> · ${esc(p.audience)}${p.location ? " in " + esc(p.location) : ""} · ${esc(p.platforms.map(x => PLATFORMS[x].short).join(", "))} · ${esc(LANGS[p.lang])}`;
+}
+function closeSheet() { $("#sheetRoot").innerHTML = ""; }
+function openSheet(html, onMount) {
+  $("#sheetRoot").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  $("#scrim").onclick = e => { if (e.target.id === "scrim") closeSheet(); };
+  onMount?.(); $(".sheet input, .sheet button")?.focus();
+}
+function openProfile(first = false) {
+  const p = { ...S.profile, platforms: [...S.profile.platforms] };
+  openSheet(`<div class="sheet-head"><div><span class="label">${first ? "Welcome to Reelmap" : "Creator profile"}</span><h2>${first ? "Tell Reelmap who you create for" : "Edit your profile"}</h2><p class="small muted" style="margin-top:4px">Set this once. Both phases use it, so you never retype it.</p></div><button class="btn sm ghost" id="pfX" aria-label="Close">✕</button></div>
+    <div class="field"><label for="pfNiche">Your niche</label><input type="text" id="pfNiche" value="${esc(p.niche)}" placeholder="e.g. budget food, skincare, coding tips"></div>
+    <div class="grid2"><div class="field"><label for="pfAud">Who watches</label><input type="text" id="pfAud" value="${esc(p.audience)}" placeholder="e.g. college students"></div>
+    <div class="field"><label for="pfLoc">City or region</label><input type="text" id="pfLoc" value="${esc(p.location)}" placeholder="e.g. Bengaluru"></div></div>
+    <div class="field"><span class="label-row"><span>Where you post</span></span><div class="chips" id="pfPlat"></div></div>
+    <div class="field"><span class="label-row"><span>Language you create in</span></span><div class="chips" id="pfLang"></div></div>
+    <div class="field"><div class="label-row"><label for="pfHandle">Handle</label><span class="small muted">optional</span></div><input type="text" id="pfHandle" value="${esc(p.handle)}" placeholder="@yourhandle"></div>
+    <div class="actions"><button class="btn primary" id="pfSave">${first ? "Start planning" : "Save profile"}</button></div>`,
+    () => {
+      chips($("#pfPlat"), Object.fromEntries(Object.entries(PLATFORMS).map(([k, v]) => [k, v.short])), p.platforms, { multi: true, onChange: v => p.platforms = v });
+      chips($("#pfLang"), LANGS, p.lang, { onChange: v => p.lang = v });
+      $("#pfX").onclick = () => { persist(); closeSheet(); }; $("#pfSkip") && ($("#pfSkip").onclick = () => { persist(); closeSheet(); });
+      $("#pfSave").onclick = () => {
+        p.niche = $("#pfNiche").value.trim() || DEFAULT_PROFILE.niche; p.audience = $("#pfAud").value.trim() || "viewers";
+        p.location = $("#pfLoc").value.trim(); p.handle = $("#pfHandle").value.trim();
+        S.profile = p; S.plan.platform = p.platforms[0]; S.plan.lang = p.lang; S.pub.platforms = [...p.platforms]; S.pub.lang = p.lang;
+        persist(); renderProfileStrip(); setupPlanControls(); setupPubControls(); closeSheet(); toast("Profile saved.");
+      };
+    });
+}
+function openEngine() {
+  const st = (ok, yes, no) => `<span class="st ${ok ? "ok" : "no"}">${ok ? yes : no}</span>`;
+  const loc = S.engine.local;
+  openSheet(`<div class="sheet-head"><div><span class="label">AI engine</span><h2>Choose what writes your content</h2></div><button class="btn sm ghost" id="enX" aria-label="Close">✕</button></div>
+    ${[["auto", "Automatic", "Uses the best engine available: Gemini / Local first, then Claude, then offline templates.", st(true, "Would use " + engineName(autoPick()), "")],
+       ["gemini", "Gemini", "Google Gemini API via server.py with GEMINI_API_KEY.", st(geminiReady(), `Ready · ${loc?.gemini_model || "gemini-2.5-flash"} · reads images`, loc ? (loc.gemini_error || "GEMINI_API_KEY not set") : "Start server.py with GEMINI_API_KEY")],
+       ["local", "Local open-source AI", "Ollama + Whisper on your own machine. Run python server.py and open http://localhost:8000.", st(localReady(), `Running · ${loc?.model || ""}${loc?.vision ? " · reads images" : ""}${loc?.whisper ? " · Whisper ready" : ""}`, loc ? (S.engine.localErr || "Model not ready") : "Not reachable from this page")],
+       ["claude", "Claude", "Works inside the shared link. The first request asks you to allow it.", st(claudeReady(), "Available", S.engine.sampleBlocked ? "Not allowed in this view" : "Not available in this view")],
+       ["offline", "Offline templates", "Rules and templates. Instant, no network, good backup for a live demo.", st(true, "Always available", "")]
+      ].map(([v, n, d, s]) => `<label class="engine-opt"><input type="radio" name="eng" value="${v}" ${S.engine.mode === v ? "checked" : ""}><span style="display:flex;flex-direction:column;gap:2px"><b>${n}</b><span class="small muted">${d}</span>${s}</span></label>`).join("")}
+    <div class="actions"><button class="btn primary" id="enSave">Done</button><button class="btn ghost" id="enRecheck">Check server again</button></div>`,
+    () => {
+      $("#enX").onclick = closeSheet;
+      $("#enRecheck").onclick = async () => { await detectLocal(); openEngine(); toast(geminiReady() || localReady() ? "Server AI ready." : "No server AI reachable from this page."); };
+      $("#enSave").onclick = () => { S.engine.mode = $("input[name=eng]:checked").value; persist(); renderEngineChip(); closeSheet(); toast(`Using ${engineName(activeEngine())}.`); };
+    });
+}
+$("#editProfile").onclick = () => openProfile(false);
+$("#engineChip").onclick = openEngine;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("#scrim")) closeSheet();
+  if (e.key === "Escape" && S.busy) S.busy.ctl.abort();
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    const v = $(".view:not([hidden])").id;
+    if (v === "view-plan") { e.preventDefault(); generateIdeas(); }
+    if (v === "view-publish") { e.preventDefault(); buildKits(); }
+  }
+});
+
+/* ============================================================
+   VIEWS + LANGUAGE + BOOT
+   ============================================================ */
+function switchView(v) {
+  $$(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
+  $$(".view").forEach(s => s.hidden = s.id !== "view-" + v);
+  if (v === "library") renderLibrary();
+  if (v === "how") renderHow();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  try { history.replaceState(null, "", "#" + v); } catch {}
+}
+$$(".tab").forEach(b => b.onclick = () => switchView(b.dataset.view));
+document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) switchView(g.dataset.go); });
+function applyUiLang() {
+  document.documentElement.lang = S.uiLang === "kn" ? "kn" : "en";
+  $$("[data-i18n]").forEach(el => { if (!el.dataset.en) el.dataset.en = el.textContent; el.textContent = (S.uiLang === "kn" && I18N.kn[el.dataset.i18n]) || el.dataset.en; });
+  $$("[data-ui-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.uiLang === S.uiLang));
+}
+$$("[data-ui-lang]").forEach(b => b.onclick = () => { S.uiLang = b.dataset.uiLang; persist(); applyUiLang(); renderPlan(); renderPub(); renderLibCount(); });
+
+function updateMoreSums() {
+  $("#pMoreSum").textContent = `${GOALS[S.plan.goal]} · ${LANGS[S.plan.lang]}${S.plan.refs.length ? ` · ${S.plan.refs.length} image${S.plan.refs.length > 1 ? "s" : ""}` : ""}`;
+  $("#uMoreSum").textContent = `${VOICES[S.pub.voice]} · ${LANGS[S.pub.lang]}`;
+}
+function setupPlanControls() {
+  $$("#pFormat .choice").forEach(b => { b.setAttribute("aria-pressed", b.dataset.v === S.plan.format); b.onclick = () => { S.plan.format = b.dataset.v; $$("#pFormat .choice").forEach(x => x.setAttribute("aria-pressed", x === b)); }; });
+  chips($("#pPlatform"), Object.fromEntries(Object.entries(PLATFORMS).map(([k, v]) => [k, v.short])), S.plan.platform, { onChange: v => S.plan.platform = v });
+  chips($("#pGoal"), GOALS, S.plan.goal, { onChange: v => { S.plan.goal = v; updateMoreSums(); } });
+  chips($("#pLang"), LANGS, S.plan.lang, { onChange: v => { S.plan.lang = v; updateMoreSums(); } });
+  updateMoreSums();
+}
+function setupPubControls() {
+  chips($("#uPlatforms"), Object.fromEntries(Object.entries(PLATFORMS).map(([k, v]) => [k, v.short])), S.pub.platforms, { multi: true, onChange: v => S.pub.platforms = v });
+  chips($("#uVoice"), VOICES, S.pub.voice, { onChange: v => { S.pub.voice = v; updateMoreSums(); } });
+  chips($("#uLang"), LANGS, S.pub.lang, { onChange: v => { S.pub.lang = v; updateMoreSums(); } });
+  updateMoreSums();
+}
+$("#planForm").addEventListener("submit", e => { e.preventDefault(); generateIdeas(); });
+$("#pubForm").addEventListener("submit", e => { e.preventDefault(); buildKits(); });
+
+const EXAMPLE_TRANSCRIPT = `Hey guys, welcome back to my channel. So today I went to five breakfast places near Jayanagar and every single plate was under 80 rupees. First stop was a small darshini near 4th Block. Their rava idli was 45 rupees, soft, and the chutney was really fresh. Second, a filter coffee place where the benne masala dosa costs 70 rupees, crispy outside, and honestly the best dosa of the day. Third was a bakery with egg puffs for 25 rupees, good if you're rushing to class. Fourth, a mess that does unlimited pongal for 60 rupees on weekdays only. The last one was a pushcart near the metro with poha and chai for 40 rupees. If you're a student in Bengaluru, save this list for exam week. Comment which area I should try next.`;
+
+function boot() {
+  const returning = loadStore();
+  S.plan.platform = S.profile.platforms[0] || "ig"; S.plan.lang = S.profile.lang;
+  S.pub.platforms = [...S.profile.platforms]; S.pub.lang = S.profile.lang; S.pub.active = S.pub.platforms[0];
+  applyUiLang(); renderProfileStrip(); setupPlanControls(); setupPubControls(); setupUseChips(); renderRatings(); renderLibCount();
+  // Example state so the first screen shows what the tool does
+  const ex = { topic: "cheap breakfast spots near college", format: "faceless", platform: S.plan.platform, goal: "grow", lang: S.plan.lang, refCount: 0 };
+  $("#pTopic").value = ex.topic;
+  const ideas = offlineIdeas(ex, 7); ideas.forEach(i => i.total = rankScore(i.scores, ex.platform)); ideas.sort((a, b) => b.total - a.total);
+  Object.assign(S.plan, { ideas, ctx: ex, selected: -1, board: null, engine: "offline", example: true, showAll: false });
+  renderPlan();
+  $("#uTranscript").value = EXAMPLE_TRANSCRIPT; $("#uTopic").value = "5 breakfasts under ₹80 in Jayanagar"; updateWordCount();
+  for (const p of S.pub.platforms) { const counter = { n: 0 }; const k = humanizeDeep(offlineKit(pubCtx(p)), counter); k.engine = "offline"; k.removed = counter.n; S.pub.kits[p] = k; }
+  S.pub.example = true; renderPub();
+  renderEngineChip();
+  const h = (location.hash || "").slice(1); if (["plan", "publish", "library", "how", "reviews"].includes(h)) switchView(h);
+  detectLocal(); connectClaude();
+  if (!returning) {
+    $("#welcome").hidden = false;
+    $("#welcomeGo").onclick = () => { $("#welcome").hidden = true; openProfile(true); };
+    $("#welcomeX").onclick = () => { $("#welcome").hidden = true; persist(); };
+  }
+}
+boot();
+</script>
+</body>
+</html>
