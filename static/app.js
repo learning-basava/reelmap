@@ -847,7 +847,7 @@ function renderPub() {
   </section>
 
   <section class="card kit">
-    ${plats.length > 1 ? `<div class="kit-tabs" role="tablist">${plats.map(x => `<button class="kit-tab" role="tab" data-plat="${x}" aria-selected="${x === p}">${esc(PLATFORMS[x].name)}</button>`).join("")}</div>` : `<div class="kit-tabs"><span class="kit-tab" aria-selected="true">${esc(P.name)}</span></div>`}
+    ${plats.length > 1 ? `<div class="kit-tabs" role="tablist">${plats.map(x => `<button class="kit-tab" role="tab" data-plat="${x}" aria-selected="${x === p}">${esc(PLATFORMS[x].name)}</button>`).join("")}</div>` : `<div class="kit-tabs"><span class="kit-tab active">${esc(P.name)}</span></div>`}
     <div class="kit-body" lang="${lang}">
       <div class="blk">
         <div class="blk-head"><span class="label">${P.titleLimit ? "Title" : "Cover line"}</span><span class="r">${counterHTML(k.titles[0], P.titleLimit || 0)}${ib("copy", t("copy"), `data-c="${copyId(k.titles[0])}"`)}</span></div>
@@ -1051,9 +1051,9 @@ function renderHow() {
   <section class="card wide">
     <span class="label">Prompt design</span><h3>The exact prompts sent to the model</h3>
     <p class="small muted">Each prompt has a role, the creator's profile, platform knowledge, hard writing rules, a language rule and a strict JSON schema. Structured output lets the interface render, rank and validate every answer.</p>
-    <details open><summary>1 · Idea prompt</summary><pre class="prompt">${esc(buildIdeasPrompt(exIdeas))}</pre></details>
-    <details><summary>2 · Storyboard prompt</summary><pre class="prompt">${esc(buildBoardPrompt({ ...exIdeas, idea: exIdea }))}</pre></details>
-    <details><summary>3 · Post kit prompt</summary><pre class="prompt">${esc(buildKitPrompt(exKit))}</pre></details>
+    <details open><summary>1 · Idea prompt</summary><pre class="prompt" tabindex="0">${esc(buildIdeasPrompt(exIdeas))}</pre></details>
+    <details><summary>2 · Storyboard prompt</summary><pre class="prompt" tabindex="0">${esc(buildBoardPrompt({ ...exIdeas, idea: exIdea }))}</pre></details>
+    <details><summary>3 · Post kit prompt</summary><pre class="prompt" tabindex="0">${esc(buildKitPrompt(exKit))}</pre></details>
   </section>`;
 }
 

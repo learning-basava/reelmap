@@ -2,6 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   humanize,
+  humanizeDeep,
+  keywords,
   rankScore,
   PLATFORMS,
   hookCheck,
@@ -14,6 +16,36 @@ test("humanize removes em dash and robotic phrasing with at least 2 fixes", () =
   assert.ok(!result.text.includes("—"), "Em dash was not removed");
   assert.ok(!result.text.includes("game-changer"), "'game-changer' was not removed");
   assert.ok(result.n >= 2, `Expected at least 2 fixes, got ${result.n}`);
+});
+
+test("humanizeDeep recursively cleans nested structures while preserving hashtags and scores", () => {
+  const counter = { n: 0 };
+  const input = {
+    title: "A game-changer — really",
+    items: [
+      {
+        caption: "Let's dive in without further ado",
+        hashtags: ["#game-changer"],
+        scores: { completion: 80 }
+      }
+    ]
+  };
+  const output = humanizeDeep(input, counter);
+  assert.ok(!output.title.includes("—"), "Em dash was not removed in title");
+  assert.ok(!output.title.includes("game-changer"), "'game-changer' was not removed in title");
+  assert.ok(!output.items[0].caption.includes("without further ado"), "'without further ado' was not removed in nested array");
+  assert.equal(output.items[0].hashtags[0], "#game-changer", "Hashtags should remain untouched");
+  assert.equal(output.items[0].scores.completion, 80, "Scores should remain untouched");
+  assert.ok(counter.n >= 2, `Expected at least 2 fixes, got ${counter.n}`);
+});
+
+test("keywords extracts frequent terms and filters stop words", () => {
+  const text = "Amazing coffee in Bengaluru. The best coffee spots near Bengaluru metro.";
+  const kw = keywords(text, 5);
+  assert.ok(Array.isArray(kw), "Expected keywords to return an array");
+  assert.ok(kw.length > 0, "Expected non-empty keywords array");
+  assert.ok(kw.includes("coffee") || kw.includes("bengaluru"), "Expected keywords to include 'coffee' or 'bengaluru'");
+  assert.ok(!kw.includes("the") && !kw.includes("in") && !kw.includes("near"), "Expected stop words to be excluded");
 });
 
 test("rankScore for 'ig' equals the weighted sum from PLATFORMS.ig.weights", () => {

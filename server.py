@@ -139,9 +139,15 @@ class RateLimiter:
         """Check whether a client IP has exceeded the allowed request limit in the current window."""
         now = time.time()
         with self.lock:
-            timestamps = [t for t in self.requests[key] if now - t < self.window_seconds]
+            for k in list(self.requests.keys()):
+                recent = [t for t in self.requests[k] if now - t < self.window_seconds]
+                if recent:
+                    self.requests[k] = recent
+                else:
+                    del self.requests[k]
+
+            timestamps = self.requests.get(key, [])
             if len(timestamps) >= self.limit:
-                self.requests[key] = timestamps
                 return False
             timestamps.append(now)
             self.requests[key] = timestamps
@@ -159,7 +165,7 @@ rate_limiter = RateLimiter(limit=20, window_seconds=60.0)
 def check_rate_limit(request: Request) -> None:
     """Enforce per-client IP rate limits across protected API endpoints."""
     forwarded = request.headers.get("x-forwarded-for")
-    ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "127.0.0.1")
+    ip = forwarded.split(",")[-1].strip() if forwarded else (request.client.host if request.client else "127.0.0.1")
     if not rate_limiter.check(ip):
         raise HTTPException(
             status_code=429,
@@ -461,7 +467,7 @@ async def transcribe(file: UploadFile = File(...), language: str | None = Form(N
 
 
 if __name__ == "__main__":
-    host_display = "localhost" if HOST in ("127.0.0.1", "0.0.0.0") else HOST  # noqa: S104 - containers bind to 0.0.0.0 via HOST env var
+    host_display = "localhost" if HOST in ("127.0.0.1", "0.0.0.0") else HOST  # noqa: S104 # nosec B104 - containers bind to 0.0.0.0 via HOST env var
     print(f"\n  Reelmap is running at http://{host_display}:{PORT}")
     gemini_status = f"configured ({_get_gemini_model()})" if _get_gemini_key() else "not set (GEMINI_API_KEY)"
     print(f"  Gemini: {gemini_status}   Ollama: {MODEL} via {OLLAMA_URL}   Whisper: {WHISPER_MODEL}\n")

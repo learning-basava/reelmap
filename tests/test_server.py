@@ -121,6 +121,18 @@ def test_rate_limiter_21st_request_returns_429(client, monkeypatch):
     assert "Rate limit exceeded" in r21.text or "rate limit" in r21.text.lower()
 
 
+def test_rate_limiter_faked_x_forwarded_for_cannot_bypass(client, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    real_ip = "203.0.113.195"
+    for i in range(20):
+        spoofed = f"198.51.100.{i}, {real_ip}"
+        r = client.post("/api/gemini", json={"prompt": "ping"}, headers={"X-Forwarded-For": spoofed})
+        assert r.status_code != 429
+    r21 = client.post("/api/gemini", json={"prompt": "ping"}, headers={"X-Forwarded-For": f"198.51.100.99, {real_ip}"})
+    assert r21.status_code == 429
+    assert "Rate limit exceeded" in r21.text or "rate limit" in r21.text.lower()
+
+
 def test_security_headers_present(client):
     r = client.get("/")
     assert r.status_code == 200

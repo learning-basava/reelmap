@@ -3,7 +3,7 @@
 :root{
   --bg:#F3F5F1; --surface:#FFFFFF; --sunken:#EAEEE8; --ink:#14201B; --muted:#58665F; --line:#D9E0D9;
   --accent:#1E6A56; --accent-ink:#FFFFFF; --accent-soft:#DDEFE7; --pop:#D6F06B; --pop-ink:#1A240E; --rec:#E0604A;
-  --good:#23845A; --warn:#A86B12; --bad:#BD3F33;
+  --good:#23845A; --warn:#8A5000; --bad:#BD3F33;
   --shadow:0 1px 2px rgba(20,32,27,.05),0 10px 30px -18px rgba(20,32,27,.35);
   --f-display:"Bricolage Grotesque","Noto Sans Kannada",ui-sans-serif,system-ui,sans-serif;
   --f-body:"Figtree","Noto Sans Kannada",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -199,7 +199,7 @@ textarea{resize:vertical;min-height:84px;line-height:1.5}
 .kit{padding:0;overflow:hidden}
 .kit-tabs{display:flex;gap:2px;padding:8px 8px 0;border-bottom:1px solid var(--line);background:var(--bg);overflow-x:auto}
 .kit-tab{border:0;background:none;padding:9px 14px;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap}
-.kit-tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 -2px 0 var(--accent) inset}
+.kit-tab[aria-selected="true"],.kit-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 -2px 0 var(--accent) inset}
 .kit-body{padding:18px;display:flex;flex-direction:column;gap:14px}
 .blk{border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .blk-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
