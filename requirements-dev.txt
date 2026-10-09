@@ -1,0 +1,6 @@
+pytest
+fastapi
+uvicorn
+httpx
+python-multipart
+ruff

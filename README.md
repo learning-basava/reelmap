@@ -97,12 +97,78 @@ docker build -t reelmap .
 docker run -p 8080:8080 -e GEMINI_API_KEY="your-gemini-api-key" reelmap
 ```
 
-## Files
+## Architecture
 
-- `Dockerfile`: container image configuration for Cloud Run
-- `index.html`: the whole app (UI, prompts, ranking, offline engine, humanizer)
-- `server.py`: FastAPI server with `/api/health`, `/api/llm` (Ollama) and `/api/transcribe` (faster-whisper)
-- `requirements.txt`: Python packages
+The browser builds the prompts → `server.py` routes to Gemini, Ollama or the offline fallback → JSON is validated, humanized and rendered.
+
+Specifically, the single-page web app structures user inputs (topic, format, creator niche, audience, and reference images) into deterministic, schema-constrained prompts directly on the client. Requests are dispatched to `server.py`, which enforces in-memory rate limiting and security headers before routing generation to Google Gemini (cloud), Ollama (local open-source models like Gemma 3), or falling back to client-side rule-based templates if no AI engine is reachable. Returned JSON is strictly validated, scrubbed of generic AI clichés by the humanizer engine, ranked according to platform-specific algorithm weights, and rendered into interactive storyboards and ready-to-post publishing kits.
+
+## Problem → Solution
+
+| Creator Pain Point | Reelmap Solution |
+|---|---|
+| **No roadmap** | Generates an actionable 7-day production roadmap with daily tasks from scripting to shooting, editing, and publishing. |
+| **Blank mind** | Produces 5 tailored, niche-specific video ideas with viral hooks and platform ranking scores (completion, shares, saves, effort). |
+| **Storyboard** | Builds shot-by-shot 9:16 visual cards with app safe zones, timecodes, camera angles, on-screen text, voiceover, and props list. |
+| **Captions** | Generates humanized, conversational short and story-style captions stripped of stock AI clichés and buzzwords. |
+| **Hashtags and SEO** | Extracts searchable spoken keywords, title variations, thumbnail hooks, and balanced broad/niche/micro hashtags. |
+| **Posting time** | Recommends optimal platform-specific posting time slots (in IST) based on creator niche and audience behavior. |
+
+## Project structure
+
+```
+reelmap/
+├── .github/
+│   └── workflows/
+│       └── tests.yml              # CI workflow (ruff linting, pytest, node tests)
+├── static/
+│   ├── app.js                     # UI state, event handling, modals, and rendering
+│   ├── logic.js                   # Pure helper logic, algorithms, scoring, and constants
+│   └── styles.css                 # Design system, accessible components, and dark mode
+├── tests/
+│   ├── index.js                   # Test entrypoint for Node.js test runner
+│   ├── logic.test.js              # Pure JavaScript logic and algorithm unit tests
+│   └── test_server.py             # FastAPI backend tests (endpoints, rate limits, headers)
+├── .dockerignore                  # Docker build ignore rules
+├── .env.example                   # Environment variable template
+├── .gitignore                     # Git ignore patterns
+├── Dockerfile                     # Cloud Run container specification
+├── index.html                     # Semantic SPA markup, skip link, accessible landmarks
+├── pyproject.toml                 # Tool configuration for pytest and ruff
+├── README.md                      # Project documentation and guide
+├── requirements.txt               # Production Python dependencies
+├── requirements-cloud.txt         # Lightweight Cloud Run dependencies
+├── requirements-dev.txt           # Development dependencies (pytest, ruff, testclient)
+├── SECURITY.md                    # Security policy, CSP documentation, and headers
+└── server.py                      # FastAPI backend with rate limiting and AI routing
+```
+
+## Testing
+
+Install development dependencies:
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run Python tests:
+```bash
+pytest -q
+```
+
+Run JavaScript logic tests:
+```bash
+node --test tests/
+```
+
+## Accessibility
+
+Reelmap is built to WCAG 2.2 AA standards and audited with axe-core:
+
+- **Keyboard support**: Full keyboard navigation across all views with high-contrast `:focus-visible` outlines on every control. Includes a "Skip to main content" link at the top of the page, focus trapping inside modal dialogs with return-to-trigger focus management, keyboard-scrollable storyboard frames (`tabindex="0" role="region"`), `Escape` shortcuts to close dialogs or abort generation, `Ctrl+Enter` (`Cmd+Enter`) shortcuts to generate, and hit targets of at least 24×24 px.
+- **Screen-reader labels**: Accessible document hierarchy (`<h1>` branding, `<nav aria-label="Main">` with `aria-current="page"`, `<main id="main">`, `<section aria-label="Your creator profile">`). Form controls and chip groups (format, platform, goal, language, voice, post to) use `role="group"` with `aria-labelledby` referencing their visible labels. Dynamic generation indicators use `role="status"` and `aria-live="polite"`.
+- **Reduced motion**: Respects `prefers-reduced-motion: reduce` by disabling CSS animations and transitions across the interface.
+- **Dark mode**: Automatic system-matched dark mode via `prefers-color-scheme: dark` (plus `[data-theme]` support) with WCAG-compliant contrast ratios across surfaces, text, and interactive states.
+- **English/Kannada interface**: Full bilingual UI support for English and Kannada (`ಕನ್ನಡ`), styled with `Noto Sans Kannada` for clear, readable typography across desktop and mobile.
 
 ## Troubleshooting
 
