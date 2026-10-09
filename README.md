@@ -78,8 +78,28 @@ Set these before `python server.py`:
 
 The first audio upload downloads the Whisper model (about 500 MB for `small`), so the first transcription is slow.
 
+## Deploy to Cloud Run
+
+Deploy Reelmap directly to Google Cloud Run using the Google Cloud CLI:
+
+```bash
+gcloud run deploy reelmap \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY="your-gemini-api-key"
+```
+
+Or build and run the container locally with Docker:
+
+```bash
+docker build -t reelmap .
+docker run -p 8080:8080 -e GEMINI_API_KEY="your-gemini-api-key" reelmap
+```
+
 ## Files
 
+- `Dockerfile`: container image configuration for Cloud Run
 - `index.html`: the whole app (UI, prompts, ranking, offline engine, humanizer)
 - `server.py`: FastAPI server with `/api/health`, `/api/llm` (Ollama) and `/api/transcribe` (faster-whisper)
 - `requirements.txt`: Python packages
